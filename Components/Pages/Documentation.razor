@@ -242,184 +242,705 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted mb-4">REST API Endpoints พร้อม HTTP Methods และ Response Format</p>
+                    <p class="text-muted mb-4">REST API Endpoints รายละเอียดครบถ้วนพร้อม Request/Response และ Error Codes</p>
                     
+                    <!-- Base URL Info -->
+                    <div class="alert alert-info mb-4">
+                        <h6><i class="fas fa-info-circle me-2"></i>Base Information</h6>
+                        <p class="mb-2"><strong>Base URL:</strong> <code>https://localhost:7175</code></p>
+                        <p class="mb-2"><strong>Content-Type:</strong> <code>application/json</code></p>
+                        <p class="mb-0"><strong>Authentication:</strong> Bearer Token (สำหรับ protected endpoints)</p>
+                    </div>
+
                     <!-- Authentication APIs -->
-                    <div class="mb-4">
-                        <h6 class="text-primary"><i class="fas fa-lock me-2"></i>Authentication</h6>
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th>Method</th>
-                                        <th>Endpoint</th>
-                                        <th>Description</th>
-                                        <th>Request Body</th>
-                                        <th>Response</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><span class="badge bg-success">POST</span></td>
-                                        <td><code>/api/auth/login</code></td>
-                                        <td>เข้าสู่ระบบ</td>
-                                        <td><code>{ username, password }</code></td>
-                                        <td><code>{ token, user, role }</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td><span class="badge bg-warning">POST</span></td>
-                                        <td><code>/api/auth/logout</code></td>
-                                        <td>ออกจากระบบ</td>
-                                        <td><code>{ token }</code></td>
-                                        <td><code>{ message: "success" }</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td><span class="badge bg-info">PUT</span></td>
-                                        <td><code>/api/auth/change-password</code></td>
-                                        <td>เปลี่ยนรหัสผ่าน</td>
-                                        <td><code>{ oldPassword, newPassword }</code></td>
-                                        <td><code>{ message: "updated" }</code></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Users APIs -->
-                    <div class="mb-4">
-                        <h6 class="text-success"><i class="fas fa-users me-2"></i>Users Management</h6>
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th>Method</th>
-                                        <th>Endpoint</th>
-                                        <th>Description</th>
-                                        <th>Parameters</th>
-                                        <th>Response</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><span class="badge bg-primary">GET</span></td>
-                                        <td><code>/api/users</code></td>
-                                        <td>ดึงรายการผู้ใช้ทั้งหมด</td>
-                                        <td><code>?page=1&limit=10&role=student</code></td>
-                                        <td><code>{ users[], total, page }</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td><span class="badge bg-primary">GET</span></td>
-                                        <td><code>/api/users/:id</code></td>
-                                        <td>ดึงข้อมูลผู้ใช้รายคน</td>
-                                        <td><code>id: number</code></td>
-                                        <td><code>{ user }</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td><span class="badge bg-success">POST</span></td>
-                                        <td><code>/api/users</code></td>
-                                        <td>สร้างผู้ใช้ใหม่</td>
-                                        <td><code>{ username, password, fullName, email, role }</code></td>
-                                        <td><code>{ user, message }</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td><span class="badge bg-info">PUT</span></td>
-                                        <td><code>/api/users/:id</code></td>
-                                        <td>แก้ไขข้อมูลผู้ใช้</td>
-                                        <td><code>{ fullName, email, phone, isActive }</code></td>
-                                        <td><code>{ user, message }</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td><span class="badge bg-danger">DELETE</span></td>
-                                        <td><code>/api/users/:id</code></td>
-                                        <td>ลบผู้ใช้</td>
-                                        <td><code>id: number</code></td>
-                                        <td><code>{ message }</code></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Subjects APIs -->
-                    <div class="mb-4">
-                        <h6 class="text-info"><i class="fas fa-book me-2"></i>Subjects Management</h6>
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th>Method</th>
-                                        <th>Endpoint</th>
-                                        <th>Description</th>
-                                        <th>Parameters</th>
-                                        <th>Response</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><span class="badge bg-primary">GET</span></td>
-                                        <td><code>/api/subjects</code></td>
-                                        <td>ดึงรายการวิชาทั้งหมด</td>
-                                        <td><code>?teacherId=1&active=true</code></td>
-                                        <td><code>{ subjects[] }</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td><span class="badge bg-success">POST</span></td>
-                                        <td><code>/api/subjects</code></td>
-                                        <td>สร้างวิชาใหม่</td>
-                                        <td><code>{ name, code, description, teacherId }</code></td>
-                                        <td><code>{ subject, message }</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td><span class="badge bg-info">PUT</span></td>
-                                        <td><code>/api/subjects/:id</code></td>
-                                        <td>แก้ไขข้อมูลวิชา</td>
-                                        <td><code>{ name, description, isActive }</code></td>
-                                        <td><code>{ subject, message }</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td><span class="badge bg-danger">DELETE</span></td>
-                                        <td><code>/api/subjects/:id</code></td>
-                                        <td>ลบวิชา</td>
-                                        <td><code>id: number</code></td>
-                                        <td><code>{ message }</code></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Exams & Results APIs -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6 class="text-warning"><i class="fas fa-file-alt me-2"></i>Exams & Questions</h6>
-                            <div class="table-responsive">
-                                <table class="table table-striped table-sm">
-                                    <tbody>
-                                        <tr><td><span class="badge bg-primary">GET</span></td><td><code>/api/exams</code></td></tr>
-                                        <tr><td><span class="badge bg-success">POST</span></td><td><code>/api/exams</code></td></tr>
-                                        <tr><td><span class="badge bg-info">PUT</span></td><td><code>/api/exams/:id</code></td></tr>
-                                        <tr><td><span class="badge bg-danger">DELETE</span></td><td><code>/api/exams/:id</code></td></tr>
-                                        <tr><td><span class="badge bg-primary">GET</span></td><td><code>/api/exams/:id/questions</code></td></tr>
-                                        <tr><td><span class="badge bg-success">POST</span></td><td><code>/api/questions</code></td></tr>
-                                        <tr><td><span class="badge bg-info">PUT</span></td><td><code>/api/questions/:id</code></td></tr>
-                                    </tbody>
-                                </table>
+                    <div class="mb-5">
+                        <h6 class="text-primary mb-3"><i class="fas fa-lock me-2"></i>Authentication APIs</h6>
+                        
+                        <!-- Login API -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><span class="badge bg-success me-2">POST</span><code>/api/auth/login</code> - เข้าสู่ระบบ</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-success">Request Body:</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "username": "admin01",
+  "password": "admin123"
+}</code></pre>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Response (200):</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1...",
+  "user": {
+    "id": 1,
+    "username": "admin01",
+    "fullName": "ผู้ดูแลระบบ",
+    "role": "Admin"
+  },
+  "expiresAt": "2024-12-15T10:30:00Z"
+}</code></pre>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <h6 class="text-danger">Error Responses:</h6>
+                                    <ul class="list-unstyled">
+                                        <li><span class="badge bg-danger me-2">401</span>Invalid credentials</li>
+                                        <li><span class="badge bg-warning me-2">403</span>Account deactivated</li>
+                                        <li><span class="badge bg-secondary me-2">400</span>Missing required fields</li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <h6 class="text-danger"><i class="fas fa-chart-line me-2"></i>Exam Results & Reports</h6>
-                            <div class="table-responsive">
-                                <table class="table table-striped table-sm">
-                                    <tbody>
-                                        <tr><td><span class="badge bg-success">POST</span></td><td><code>/api/submit-exam</code></td></tr>
-                                        <tr><td><span class="badge bg-primary">GET</span></td><td><code>/api/results/:studentId</code></td></tr>
-                                        <tr><td><span class="badge bg-primary">GET</span></td><td><code>/api/reports/summary</code></td></tr>
-                                        <tr><td><span class="badge bg-primary">GET</span></td><td><code>/api/reports/students</code></td></tr>
-                                        <tr><td><span class="badge bg-primary">GET</span></td><td><code>/api/reports/subjects</code></td></tr>
-                                        <tr><td><span class="badge bg-primary">GET</span></td><td><code>/api/exports/csv</code></td></tr>
-                                        <tr><td><span class="badge bg-primary">GET</span></td><td><code>/api/exports/pdf</code></td></tr>
-                                    </tbody>
-                                </table>
+
+                        <!-- Logout API -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><span class="badge bg-warning me-2">POST</span><code>/api/auth/logout</code> - ออกจากระบบ</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-success">Headers:</h6>
+                                        <pre class="bg-light p-2 rounded"><code>Authorization: Bearer {token}</code></pre>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Response (200):</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "success": true,
+  "message": "Logged out successfully"
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Change Password API -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><span class="badge bg-info me-2">PUT</span><code>/api/auth/change-password</code> - เปลี่ยนรหัสผ่าน</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-success">Request Body:</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "currentPassword": "oldpass123",
+  "newPassword": "newpass456",
+  "confirmPassword": "newpass456"
+}</code></pre>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Response (200):</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "success": true,
+  "message": "Password updated successfully"
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Users Management APIs -->
+                    <div class="mb-5">
+                        <h6 class="text-success mb-3"><i class="fas fa-users me-2"></i>Users Management APIs</h6>
+                        
+                        <!-- Get All Users -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><span class="badge bg-primary me-2">GET</span><code>/api/users</code> - ดึงรายการผู้ใช้ทั้งหมด</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-success">Query Parameters:</h6>
+                                        <pre class="bg-light p-2 rounded"><code>page=1              (int, default: 1)
+pageSize=10         (int, default: 10)
+role=Admin          (enum: Admin/Teacher/Student)
+search=john         (string, search in name/email)
+isActive=true       (boolean)
+sortBy=createdDate  (string)
+sortOrder=desc      (string: asc/desc)</code></pre>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Response (200):</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "success": true,
+  "data": {
+    "users": [...],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 15,
+      "totalItems": 150,
+      "pageSize": 10
+    }
+  }
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Get User by ID -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><span class="badge bg-primary me-2">GET</span><code>/api/users/{id}</code> - ดึงข้อมูลผู้ใช้รายคน</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-success">Path Parameters:</h6>
+                                        <pre class="bg-light p-2 rounded"><code>id: number (required)</code></pre>
+                                        <h6 class="text-success mt-3">Example:</h6>
+                                        <pre class="bg-light p-2 rounded"><code>GET /api/users/123</code></pre>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Response (200):</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "success": true,
+  "data": {
+    "id": 123,
+    "username": "student001",
+    "fullName": "นางสาววิมลรัตน์ ใจดี",
+    "email": "student1@student.pisa.edu",
+    "phoneNumber": "09-201-3001",
+    "role": "Student",
+    "isActive": true,
+    "createdDate": "2024-01-15T08:30:00Z",
+    "lastLoginDate": "2024-12-14T14:22:00Z"
+  }
+}</code></pre>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <h6 class="text-danger">Error Responses:</h6>
+                                    <ul class="list-unstyled">
+                                        <li><span class="badge bg-danger me-2">404</span>User not found</li>
+                                        <li><span class="badge bg-warning me-2">403</span>Insufficient permissions</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Create User -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><span class="badge bg-success me-2">POST</span><code>/api/users</code> - สร้างผู้ใช้ใหม่</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-success">Request Body:</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "username": "newuser001",
+  "password": "password123",
+  "fullName": "นายสมชาย ใหม่",
+  "email": "newuser@example.com",
+  "phoneNumber": "08-123-4567",
+  "role": "Student"
+}</code></pre>
+                                        <small class="text-muted">*All fields required</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Response (201):</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "success": true,
+  "message": "User created successfully",
+  "data": {
+    "id": 151,
+    "username": "newuser001",
+    "fullName": "นายสมชาย ใหม่",
+    "role": "Student",
+    "isActive": true,
+    "createdDate": "2024-12-14T16:30:00Z"
+  }
+}</code></pre>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <h6 class="text-danger">Validation Rules:</h6>
+                                    <ul class="list-unstyled">
+                                        <li><span class="badge bg-info me-2">Username</span>3-50 characters, alphanumeric only</li>
+                                        <li><span class="badge bg-info me-2">Password</span>Minimum 6 characters</li>
+                                        <li><span class="badge bg-info me-2">Email</span>Valid email format</li>
+                                        <li><span class="badge bg-info me-2">Role</span>Admin, Teacher, or Student</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Update User -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><span class="badge bg-info me-2">PUT</span><code>/api/users/{id}</code> - แก้ไขข้อมูลผู้ใช้</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-success">Request Body (partial update):</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "fullName": "นายสมชาย แก้ไขแล้ว",
+  "email": "updated@example.com",
+  "phoneNumber": "08-999-8888",
+  "isActive": false
+}</code></pre>
+                                        <small class="text-muted">*Send only fields to update</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Response (200):</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "success": true,
+  "message": "User updated successfully",
+  "data": {
+    "id": 151,
+    "fullName": "นายสมชาย แก้ไขแล้ว",
+    "email": "updated@example.com",
+    "phoneNumber": "08-999-8888",
+    "isActive": false,
+    "updatedDate": "2024-12-14T17:15:00Z"
+  }
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Delete User -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><span class="badge bg-danger me-2">DELETE</span><code>/api/users/{id}</code> - ลบผู้ใช้</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-success">Path Parameters:</h6>
+                                        <pre class="bg-light p-2 rounded"><code>id: number (required)</code></pre>
+                                        <div class="alert alert-warning mt-2">
+                                            <small><i class="fas fa-exclamation-triangle me-1"></i>การลบจะเป็น Soft Delete (isActive = false)</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Response (200):</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "success": true,
+  "message": "User deleted successfully"
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Subjects Management APIs -->
+                    <div class="mb-5">
+                        <h6 class="text-info mb-3"><i class="fas fa-book me-2"></i>Subjects Management APIs</h6>
+                        
+                        <!-- Get All Subjects -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><span class="badge bg-primary me-2">GET</span><code>/api/subjects</code> - ดึงรายการวิชาทั้งหมด</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-success">Query Parameters:</h6>
+                                        <pre class="bg-light p-2 rounded"><code>teacherId=6      (int, filter by teacher)
+isActive=true    (boolean)
+search=math      (string, search in name/code)
+page=1           (int)
+pageSize=20      (int)</code></pre>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Response (200):</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "success": true,
+  "data": {
+    "subjects": [
+      {
+        "id": 1,
+        "name": "คณิตศาสตร์พื้นฐาน",
+        "code": "MATH101",
+        "description": "รายวิชาคณิตศาสตร์...",
+        "teacherId": 6,
+        "teacherName": "อาจารย์สมชาย",
+        "examCount": 4,
+        "studentCount": 35,
+        "isActive": true,
+        "createdDate": "2024-01-10T09:00:00Z"
+      }
+    ],
+    "pagination": {...}
+  }
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Create Subject -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><span class="badge bg-success me-2">POST</span><code>/api/subjects</code> - สร้างวิชาใหม่</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-success">Request Body:</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "name": "ฟิสิกส์ขั้นสูง",
+  "code": "PHYS201",
+  "description": "วิชาฟิสิกส์สำหรับนักศึกษาระดับสูง",
+  "teacherId": 8
+}</code></pre>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Response (201):</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "success": true,
+  "message": "Subject created successfully",
+  "data": {
+    "id": 51,
+    "name": "ฟิสิกส์ขั้นสูง",
+    "code": "PHYS201",
+    "teacherId": 8,
+    "isActive": true,
+    "createdDate": "2024-12-14T18:00:00Z"
+  }
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Exams Management APIs -->
+                    <div class="mb-5">
+                        <h6 class="text-warning mb-3"><i class="fas fa-file-alt me-2"></i>Exams Management APIs</h6>
+                        
+                        <!-- Get All Exams -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><span class="badge bg-primary me-2">GET</span><code>/api/exams</code> - ดึงรายการข้อสอบทั้งหมด</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-success">Query Parameters:</h6>
+                                        <pre class="bg-light p-2 rounded"><code>subjectId=1      (int, filter by subject)
+teacherId=6      (int, filter by teacher)
+isActive=true    (boolean)
+status=active    (string: active/upcoming/past)
+search=midterm   (string)
+page=1           (int)
+pageSize=15      (int)</code></pre>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Response (200):</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "success": true,
+  "data": {
+    "exams": [
+      {
+        "id": 1,
+        "title": "สอบกลางภาค คณิตศาสตร์พื้นฐาน ครั้งที่ 1",
+        "subjectId": 1,
+        "subjectName": "คณิตศาสตร์พื้นฐาน",
+        "duration": 120,
+        "totalPoints": 100,
+        "questionCount": 20,
+        "participantCount": 35,
+        "startDate": "2024-12-20T09:00:00Z",
+        "endDate": "2024-12-25T17:00:00Z",
+        "status": "upcoming",
+        "isActive": true
+      }
+    ],
+    "pagination": {...}
+  }
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Create Exam -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><span class="badge bg-success me-2">POST</span><code>/api/exams</code> - สร้างข้อสอบใหม่</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-success">Request Body:</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "title": "แบบทดสอบ Unit 1",
+  "description": "ทดสอบความรู้ในหน่วยที่ 1",
+  "subjectId": 1,
+  "duration": 60,
+  "totalPoints": 50,
+  "startDate": "2024-12-20T14:00:00Z",
+  "endDate": "2024-12-22T17:00:00Z",
+  "questions": [
+    {
+      "text": "2 + 2 เท่ากับเท่าใด?",
+      "type": "MultipleChoice",
+      "options": ["3", "4", "5", "6"],
+      "correctAnswer": "4",
+      "points": 5
+    }
+  ]
+}</code></pre>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Response (201):</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "success": true,
+  "message": "Exam created successfully",
+  "data": {
+    "id": 201,
+    "title": "แบบทดสอบ Unit 1",
+    "subjectId": 1,
+    "duration": 60,
+    "totalPoints": 50,
+    "questionCount": 1,
+    "isActive": true,
+    "createdDate": "2024-12-14T19:00:00Z"
+  }
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Get Exam Questions -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><span class="badge bg-primary me-2">GET</span><code>/api/exams/{id}/questions</code> - ดึงคำถามของข้อสอบ</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-success">Path Parameters:</h6>
+                                        <pre class="bg-light p-2 rounded"><code>id: number (exam ID)</code></pre>
+                                        <div class="alert alert-info mt-2">
+                                            <small><i class="fas fa-info-circle me-1"></i>สำหรับนักศึกษา: จะไม่แสดง correctAnswer</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Response (200):</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "success": true,
+  "data": {
+    "examId": 1,
+    "examTitle": "สอบกลางภาค คณิตศาสตร์",
+    "duration": 120,
+    "totalPoints": 100,
+    "questions": [
+      {
+        "id": 1001,
+        "text": "2 + 2 เท่ากับเท่าใด?",
+        "type": "MultipleChoice",
+        "options": ["3", "4", "5", "6"],
+        "points": 5
+      }
+    ]
+  }
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Exam -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><span class="badge bg-success me-2">POST</span><code>/api/exams/{id}/submit</code> - ส่งคำตอบข้อสอบ</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-success">Request Body:</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "examId": 1,
+  "studentId": 31,
+  "startTime": "2024-12-20T14:00:00Z",
+  "endTime": "2024-12-20T15:30:00Z",
+  "answers": [
+    {
+      "questionId": 1001,
+      "answer": "4"
+    },
+    {
+      "questionId": 1002,
+      "answer": "คำตอบข้อ 2"
+    }
+  ]
+}</code></pre>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Response (200):</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "success": true,
+  "message": "Exam submitted successfully",
+  "data": {
+    "resultId": 501,
+    "score": 85,
+    "totalPoints": 100,
+    "percentage": 85.0,
+    "timeTaken": "01:30:00",
+    "isCompleted": true,
+    "submittedAt": "2024-12-20T15:30:00Z",
+    "correctAnswers": 17,
+    "totalQuestions": 20
+  }
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reports & Analytics APIs -->
+                    <div class="mb-5">
+                        <h6 class="text-danger mb-3"><i class="fas fa-chart-line me-2"></i>Reports & Analytics APIs</h6>
+                        
+                        <!-- Get Student Results -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><span class="badge bg-primary me-2">GET</span><code>/api/students/{id}/results</code> - ดึงผลการสอบของนักศึกษา</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-success">Query Parameters:</h6>
+                                        <pre class="bg-light p-2 rounded"><code>subjectId=1      (int, filter by subject)
+dateFrom=2024-01-01  (date)
+dateTo=2024-12-31    (date)
+page=1           (int)
+pageSize=10      (int)</code></pre>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Response (200):</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "success": true,
+  "data": {
+    "studentInfo": {
+      "id": 31,
+      "fullName": "นางสาววิมลรัตน์ ใจดี",
+      "studentId": "64010001"
+    },
+    "results": [...],
+    "summary": {
+      "totalExams": 8,
+      "averageScore": 78.5,
+      "highestScore": 95,
+      "lowestScore": 62,
+      "passedExams": 7
+    },
+    "pagination": {...}
+  }
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Get Reports Summary -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><span class="badge bg-primary me-2">GET</span><code>/api/reports/summary</code> - ดึงรายงานสรุปภาพรวม</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-success">Query Parameters:</h6>
+                                        <pre class="bg-light p-2 rounded"><code>dateFrom=2024-01-01  (date)
+dateTo=2024-12-31    (date)
+subjectId=1      (int, optional)
+teacherId=6      (int, optional)</code></pre>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Response (200):</h6>
+                                        <pre class="bg-light p-2 rounded"><code>{
+  "success": true,
+  "data": {
+    "totalStudents": 120,
+    "totalExams": 200,
+    "totalSubjects": 50,
+    "totalResults": 520,
+    "averageScore": 76.8,
+    "passRate": 85.4,
+    "topPerformers": [...],
+    "subjectPerformance": [...],
+    "examTrends": [...]
+  }
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Export Data -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><span class="badge bg-primary me-2">GET</span><code>/api/exports/{format}</code> - ส่งออกข้อมูล</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-success">Path Parameters:</h6>
+                                        <pre class="bg-light p-2 rounded"><code>format: string (csv|pdf|excel)</code></pre>
+                                        <h6 class="text-success mt-3">Query Parameters:</h6>
+                                        <pre class="bg-light p-2 rounded"><code>type=results     (string: users|subjects|exams|results)
+subjectId=1      (int, optional)
+dateFrom=2024-01-01  (date)
+dateTo=2024-12-31    (date)</code></pre>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Response:</h6>
+                                        <pre class="bg-light p-2 rounded"><code>Content-Type: application/octet-stream
+Content-Disposition: attachment; filename="report.csv"
+
+[Binary file content]</code></pre>
+                                        <div class="alert alert-success mt-2">
+                                            <small><i class="fas fa-download me-1"></i>ไฟล์จะถูกดาวน์โหลดโดยอัตโนมัติ</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Error Codes Reference -->
+                    <div class="card">
+                        <div class="card-header bg-dark text-white">
+                            <h6 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>HTTP Status Codes Reference</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="text-success">Success Codes:</h6>
+                                    <ul class="list-unstyled">
+                                        <li><span class="badge bg-success me-2">200</span>OK - Request successful</li>
+                                        <li><span class="badge bg-success me-2">201</span>Created - Resource created</li>
+                                        <li><span class="badge bg-info me-2">204</span>No Content - Successful, no data returned</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="text-danger">Error Codes:</h6>
+                                    <ul class="list-unstyled">
+                                        <li><span class="badge bg-warning me-2">400</span>Bad Request - Invalid input</li>
+                                        <li><span class="badge bg-danger me-2">401</span>Unauthorized - Authentication required</li>
+                                        <li><span class="badge bg-warning me-2">403</span>Forbidden - Insufficient permissions</li>
+                                        <li><span class="badge bg-danger me-2">404</span>Not Found - Resource not found</li>
+                                        <li><span class="badge bg-danger me-2">409</span>Conflict - Duplicate data</li>
+                                        <li><span class="badge bg-secondary me-2">500</span>Internal Server Error</li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>
