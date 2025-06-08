@@ -82,20 +82,21 @@
                         <div class="col-md-6">
                             <div class="card bg-light">
                                 <div class="card-header bg-primary text-white">
-                                    <h6 class="mb-0"><i class="fas fa-table me-2"></i>users</h6>
+                                    <h6 class="mb-0"><i class="fas fa-table me-2"></i>users (ตารางผู้ใช้งาน)</h6>
                                 </div>
                                 <div class="card-body">
+                                    <p class="text-muted small mb-2">เก็บข้อมูลผู้ใช้ระบบทั้งหมด: Admin, Teacher, Student</p>
                                     <table class="table table-sm table-borderless">
                                         <tbody>
-                                            <tr><td><code>id</code></td><td><span class="badge bg-warning">INT</span></td><td>Primary Key</td></tr>
-                                            <tr><td><code>username</code></td><td><span class="badge bg-info">VARCHAR(50)</span></td><td>ชื่อผู้ใช้</td></tr>
-                                            <tr><td><code>password</code></td><td><span class="badge bg-info">VARCHAR(255)</span></td><td>รหัสผ่าน (Hash)</td></tr>
-                                            <tr><td><code>full_name</code></td><td><span class="badge bg-info">VARCHAR(200)</span></td><td>ชื่อ-นามสกุล</td></tr>
-                                            <tr><td><code>email</code></td><td><span class="badge bg-info">VARCHAR(100)</span></td><td>อีเมล</td></tr>
-                                            <tr><td><code>phone</code></td><td><span class="badge bg-info">VARCHAR(20)</span></td><td>เบอร์โทร</td></tr>
-                                            <tr><td><code>role</code></td><td><span class="badge bg-success">ENUM</span></td><td>Admin, Teacher, Student</td></tr>
-                                            <tr><td><code>is_active</code></td><td><span class="badge bg-secondary">BOOLEAN</span></td><td>สถานะใช้งาน</td></tr>
-                                            <tr><td><code>created_at</code></td><td><span class="badge bg-dark">DATETIME</span></td><td>วันที่สร้าง</td></tr>
+                                            <tr><td><code>id</code></td><td><span class="badge bg-warning">INT</span></td><td>รหัสผู้ใช้ (Primary Key)</td></tr>
+                                            <tr><td><code>username</code></td><td><span class="badge bg-info">VARCHAR(50)</span></td><td>ชื่อผู้ใช้สำหรับเข้าสู่ระบบ</td></tr>
+                                            <tr><td><code>password</code></td><td><span class="badge bg-info">VARCHAR(255)</span></td><td>รหัสผ่าน (แฮช)</td></tr>
+                                            <tr><td><code>full_name</code></td><td><span class="badge bg-info">VARCHAR(200)</span></td><td>ชื่อ-นามสกุลจริง</td></tr>
+                                            <tr><td><code>email</code></td><td><span class="badge bg-info">VARCHAR(100)</span></td><td>อีเมลติดต่อ</td></tr>
+                                            <tr><td><code>phone</code></td><td><span class="badge bg-info">VARCHAR(20)</span></td><td>เบอร์โทรศัพท์</td></tr>
+                                            <tr><td><code>role</code></td><td><span class="badge bg-success">ENUM</span></td><td>บทบาท: Admin/Teacher/Student</td></tr>
+                                            <tr><td><code>is_active</code></td><td><span class="badge bg-secondary">BOOLEAN</span></td><td>สถานะการใช้งาน (เปิด/ปิด)</td></tr>
+                                            <tr><td><code>created_at</code></td><td><span class="badge bg-dark">DATETIME</span></td><td>วันที่สร้างบัญชี</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -104,18 +105,19 @@
                         <div class="col-md-6">
                             <div class="card bg-light">
                                 <div class="card-header bg-success text-white">
-                                    <h6 class="mb-0"><i class="fas fa-table me-2"></i>subjects</h6>
+                                    <h6 class="mb-0"><i class="fas fa-table me-2"></i>subjects (ตารางรายวิชา)</h6>
                                 </div>
                                 <div class="card-body">
+                                    <p class="text-muted small mb-2">เก็บข้อมูลวิชาเรียนที่เปิดสอนในระบบ</p>
                                     <table class="table table-sm table-borderless">
                                         <tbody>
-                                            <tr><td><code>id</code></td><td><span class="badge bg-warning">INT</span></td><td>Primary Key</td></tr>
-                                            <tr><td><code>name</code></td><td><span class="badge bg-info">VARCHAR(100)</span></td><td>ชื่อวิชา</td></tr>
-                                            <tr><td><code>code</code></td><td><span class="badge bg-info">VARCHAR(20)</span></td><td>รหัสวิชา</td></tr>
-                                            <tr><td><code>description</code></td><td><span class="badge bg-info">TEXT</span></td><td>คำอธิบาย</td></tr>
-                                            <tr><td><code>teacher_id</code></td><td><span class="badge bg-warning">INT</span></td><td>Foreign Key → users.id</td></tr>
-                                            <tr><td><code>is_active</code></td><td><span class="badge bg-secondary">BOOLEAN</span></td><td>สถานะใช้งาน</td></tr>
-                                            <tr><td><code>created_at</code></td><td><span class="badge bg-dark">DATETIME</span></td><td>วันที่สร้าง</td></tr>
+                                            <tr><td><code>id</code></td><td><span class="badge bg-warning">INT</span></td><td>รหัสวิชา (Primary Key)</td></tr>
+                                            <tr><td><code>name</code></td><td><span class="badge bg-info">VARCHAR(100)</span></td><td>ชื่อวิชาเรียน</td></tr>
+                                            <tr><td><code>code</code></td><td><span class="badge bg-info">VARCHAR(20)</span></td><td>รหัสวิชา เช่น MATH101</td></tr>
+                                            <tr><td><code>description</code></td><td><span class="badge bg-info">TEXT</span></td><td>คำอธิบายรายวิชา</td></tr>
+                                            <tr><td><code>teacher_id</code></td><td><span class="badge bg-warning">INT</span></td><td>รหัสอาจารย์ผู้สอน (FK→users.id)</td></tr>
+                                            <tr><td><code>is_active</code></td><td><span class="badge bg-secondary">BOOLEAN</span></td><td>สถานะการเปิดสอน</td></tr>
+                                            <tr><td><code>created_at</code></td><td><span class="badge bg-dark">DATETIME</span></td><td>วันที่สร้างวิชา</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -128,21 +130,22 @@
                         <div class="col-md-6">
                             <div class="card bg-light">
                                 <div class="card-header bg-info text-white">
-                                    <h6 class="mb-0"><i class="fas fa-table me-2"></i>exams</h6>
+                                    <h6 class="mb-0"><i class="fas fa-table me-2"></i>exams (ตารางข้อสอบ)</h6>
                                 </div>
                                 <div class="card-body">
+                                    <p class="text-muted small mb-2">เก็บข้อมูลข้อสอบที่สร้างโดยอาจารย์</p>
                                     <table class="table table-sm table-borderless">
                                         <tbody>
-                                            <tr><td><code>id</code></td><td><span class="badge bg-warning">INT</span></td><td>Primary Key</td></tr>
-                                            <tr><td><code>subject_id</code></td><td><span class="badge bg-warning">INT</span></td><td>Foreign Key → subjects.id</td></tr>
+                                            <tr><td><code>id</code></td><td><span class="badge bg-warning">INT</span></td><td>รหัสข้อสอบ (Primary Key)</td></tr>
+                                            <tr><td><code>subject_id</code></td><td><span class="badge bg-warning">INT</span></td><td>รหัสวิชา (FK→subjects.id)</td></tr>
                                             <tr><td><code>title</code></td><td><span class="badge bg-info">VARCHAR(200)</span></td><td>ชื่อข้อสอบ</td></tr>
-                                            <tr><td><code>description</code></td><td><span class="badge bg-info">TEXT</span></td><td>คำอธิบาย</td></tr>
-                                            <tr><td><code>time_limit</code></td><td><span class="badge bg-warning">INT</span></td><td>เวลาจำกัด (นาที)</td></tr>
-                                            <tr><td><code>total_points</code></td><td><span class="badge bg-warning">INT</span></td><td>คะแนนเต็ม</td></tr>
-                                            <tr><td><code>start_date</code></td><td><span class="badge bg-dark">DATETIME</span></td><td>วันเริ่มสอบ</td></tr>
-                                            <tr><td><code>end_date</code></td><td><span class="badge bg-dark">DATETIME</span></td><td>วันสิ้นสุด</td></tr>
-                                            <tr><td><code>is_active</code></td><td><span class="badge bg-secondary">BOOLEAN</span></td><td>สถานะใช้งาน</td></tr>
-                                            <tr><td><code>created_at</code></td><td><span class="badge bg-dark">DATETIME</span></td><td>วันที่สร้าง</td></tr>
+                                            <tr><td><code>description</code></td><td><span class="badge bg-info">TEXT</span></td><td>คำอธิบายข้อสอบ</td></tr>
+                                            <tr><td><code>time_limit</code></td><td><span class="badge bg-warning">INT</span></td><td>เวลาทำข้อสอบ (นาที)</td></tr>
+                                            <tr><td><code>total_points</code></td><td><span class="badge bg-warning">INT</span></td><td>คะแนนเต็มของข้อสอบ</td></tr>
+                                            <tr><td><code>start_date</code></td><td><span class="badge bg-dark">DATETIME</span></td><td>วันเวลาเริ่มเปิดสอบ</td></tr>
+                                            <tr><td><code>end_date</code></td><td><span class="badge bg-dark">DATETIME</span></td><td>วันเวลาปิดสอบ</td></tr>
+                                            <tr><td><code>is_active</code></td><td><span class="badge bg-secondary">BOOLEAN</span></td><td>สถานะการใช้งานข้อสอบ</td></tr>
+                                            <tr><td><code>created_at</code></td><td><span class="badge bg-dark">DATETIME</span></td><td>วันที่สร้างข้อสอบ</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -151,18 +154,19 @@
                         <div class="col-md-6">
                             <div class="card bg-light">
                                 <div class="card-header bg-warning text-dark">
-                                    <h6 class="mb-0"><i class="fas fa-table me-2"></i>questions</h6>
+                                    <h6 class="mb-0"><i class="fas fa-table me-2"></i>questions (ตารางคำถาม)</h6>
                                 </div>
                                 <div class="card-body">
+                                    <p class="text-muted small mb-2">เก็บคำถามในแต่ละข้อสอบ</p>
                                     <table class="table table-sm table-borderless">
                                         <tbody>
-                                            <tr><td><code>id</code></td><td><span class="badge bg-warning">INT</span></td><td>Primary Key</td></tr>
-                                            <tr><td><code>exam_id</code></td><td><span class="badge bg-warning">INT</span></td><td>Foreign Key → exams.id</td></tr>
+                                            <tr><td><code>id</code></td><td><span class="badge bg-warning">INT</span></td><td>รหัสคำถาม (Primary Key)</td></tr>
+                                            <tr><td><code>exam_id</code></td><td><span class="badge bg-warning">INT</span></td><td>รหัสข้อสอบ (FK→exams.id)</td></tr>
                                             <tr><td><code>question_text</code></td><td><span class="badge bg-info">TEXT</span></td><td>ข้อความคำถาม</td></tr>
-                                            <tr><td><code>question_type</code></td><td><span class="badge bg-success">ENUM</span></td><td>MultipleChoice, ShortAnswer</td></tr>
-                                            <tr><td><code>options</code></td><td><span class="badge bg-info">JSON</span></td><td>ตัวเลือก (สำหรับ Multiple Choice)</td></tr>
+                                            <tr><td><code>question_type</code></td><td><span class="badge bg-success">ENUM</span></td><td>ประเภท: ปรนัย/อัตนัย</td></tr>
+                                            <tr><td><code>options</code></td><td><span class="badge bg-info">JSON</span></td><td>ตัวเลือกคำตอบ (กรณีปรนัย)</td></tr>
                                             <tr><td><code>correct_answer</code></td><td><span class="badge bg-info">TEXT</span></td><td>คำตอบที่ถูกต้อง</td></tr>
-                                            <tr><td><code>points</code></td><td><span class="badge bg-warning">INT</span></td><td>คะแนน</td></tr>
+                                            <tr><td><code>points</code></td><td><span class="badge bg-warning">INT</span></td><td>คะแนนของคำถามนี้</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -171,26 +175,27 @@
                     </div>
 
                     <!-- Exam Results Table -->
-                    <div class="row">
+                    <div class="row mb-4">
                         <div class="col-md-8">
                             <div class="card bg-light">
                                 <div class="card-header bg-danger text-white">
-                                    <h6 class="mb-0"><i class="fas fa-table me-2"></i>exam_results</h6>
+                                    <h6 class="mb-0"><i class="fas fa-table me-2"></i>exam_results (ตารางผลการสอบ)</h6>
                                 </div>
                                 <div class="card-body">
+                                    <p class="text-muted small mb-2">เก็บผลการทำข้อสอบของนักศึกษาแต่ละคน</p>
                                     <table class="table table-sm table-borderless">
                                         <tbody>
-                                            <tr><td><code>id</code></td><td><span class="badge bg-warning">INT</span></td><td>Primary Key</td></tr>
-                                            <tr><td><code>student_id</code></td><td><span class="badge bg-warning">INT</span></td><td>Foreign Key → users.id</td></tr>
-                                            <tr><td><code>exam_id</code></td><td><span class="badge bg-warning">INT</span></td><td>Foreign Key → exams.id</td></tr>
+                                            <tr><td><code>id</code></td><td><span class="badge bg-warning">INT</span></td><td>รหัสผลสอบ (Primary Key)</td></tr>
+                                            <tr><td><code>student_id</code></td><td><span class="badge bg-warning">INT</span></td><td>รหัสนักศึกษา (FK→users.id)</td></tr>
+                                            <tr><td><code>exam_id</code></td><td><span class="badge bg-warning">INT</span></td><td>รหัสข้อสอบ (FK→exams.id)</td></tr>
                                             <tr><td><code>score</code></td><td><span class="badge bg-warning">INT</span></td><td>คะแนนที่ได้</td></tr>
                                             <tr><td><code>total_points</code></td><td><span class="badge bg-warning">INT</span></td><td>คะแนนเต็ม</td></tr>
-                                            <tr><td><code>percentage</code></td><td><span class="badge bg-warning">DECIMAL</span></td><td>เปอร์เซ็นต์</td></tr>
-                                            <tr><td><code>answers</code></td><td><span class="badge bg-info">JSON</span></td><td>คำตอบของนักศึกษา</td></tr>
-                                            <tr><td><code>time_taken</code></td><td><span class="badge bg-warning">INT</span></td><td>เวลาที่ใช้ (นาที)</td></tr>
-                                            <tr><td><code>start_time</code></td><td><span class="badge bg-dark">DATETIME</span></td><td>เวลาเริ่มสอบ</td></tr>
-                                            <tr><td><code>end_time</code></td><td><span class="badge bg-dark">DATETIME</span></td><td>เวลาสิ้นสุด</td></tr>
-                                            <tr><td><code>is_completed</code></td><td><span class="badge bg-secondary">BOOLEAN</span></td><td>สถานะการสอบ</td></tr>
+                                            <tr><td><code>percentage</code></td><td><span class="badge bg-warning">DECIMAL</span></td><td>เปอร์เซ็นต์คะแนน</td></tr>
+                                            <tr><td><code>answers</code></td><td><span class="badge bg-info">JSON</span></td><td>คำตอบทั้งหมดของนักศึกษา</td></tr>
+                                            <tr><td><code>time_taken</code></td><td><span class="badge bg-warning">INT</span></td><td>เวลาที่ใช้ทำ (นาที)</td></tr>
+                                            <tr><td><code>start_time</code></td><td><span class="badge bg-dark">DATETIME</span></td><td>เวลาเริ่มทำข้อสอบ</td></tr>
+                                            <tr><td><code>end_time</code></td><td><span class="badge bg-dark">DATETIME</span></td><td>เวลาส่งข้อสอบ</td></tr>
+                                            <tr><td><code>is_completed</code></td><td><span class="badge bg-secondary">BOOLEAN</span></td><td>สถานะการสอบ (เสร็จ/ไม่เสร็จ)</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -199,31 +204,170 @@
                         <div class="col-md-4">
                             <div class="card">
                                 <div class="card-header bg-dark text-white">
-                                    <h6 class="mb-0"><i class="fas fa-sitemap me-2"></i>Relationships</h6>
+                                    <h6 class="mb-0"><i class="fas fa-sitemap me-2"></i>ความสัมพันธ์ระหว่างตาราง</h6>
                                 </div>
                                 <div class="card-body">
                                     <ul class="list-unstyled">
                                         <li class="mb-2">
                                             <i class="fas fa-arrow-right text-primary me-2"></i>
-                                            <code>users(1) → subjects(n)</code>
+                                            <small><code>users(1) → subjects(n)</code><br>อาจารย์ 1 คน สอนได้หลายวิชา</small>
                                         </li>
                                         <li class="mb-2">
                                             <i class="fas fa-arrow-right text-success me-2"></i>
-                                            <code>subjects(1) → exams(n)</code>
+                                            <small><code>subjects(1) → exams(n)</code><br>วิชา 1 วิชา มีได้หลายข้อสอบ</small>
                                         </li>
                                         <li class="mb-2">
                                             <i class="fas fa-arrow-right text-info me-2"></i>
-                                            <code>exams(1) → questions(n)</code>
+                                            <small><code>exams(1) → questions(n)</code><br>ข้อสอบ 1 ชุด มีหลายคำถาม</small>
                                         </li>
                                         <li class="mb-2">
                                             <i class="fas fa-arrow-right text-warning me-2"></i>
-                                            <code>users(1) → exam_results(n)</code>
+                                            <small><code>users(1) → exam_results(n)</code><br>นักศึกษา 1 คน สอบได้หลายครั้ง</small>
                                         </li>
                                         <li>
                                             <i class="fas fa-arrow-right text-danger me-2"></i>
-                                            <code>exams(1) → exam_results(n)</code>
+                                            <small><code>exams(1) → exam_results(n)</code><br>ข้อสอบ 1 ชุด มีหลายผลสอบ</small>
                                         </li>
                                     </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ER Diagram with Mermaid.js -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header bg-gradient" style="background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);">
+                                    <h6 class="mb-0 text-white">
+                                        <i class="fas fa-project-diagram me-2"></i>
+                                        Entity Relationship Diagram (ERD) - แผนภาพความสัมพันธ์ระหว่างตาราง
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="alert alert-info">
+                                        <h6><i class="fas fa-info-circle me-2"></i>Database Schema Overview</h6>
+                                        <p class="mb-0">แผนภาพแสดงความสัมพันธ์ระหว่างตารางในฐานข้อมูลระบบ PISA พร้อมคำอธิบายฟิลด์สำคัญ</p>
+                                    </div>
+                                    
+                                    <!-- Mermaid ER Diagram -->
+                                    <div class="text-center mb-4">
+                                        <div id="mermaid-erd" class="border rounded p-3" style="background: #f8f9fa;">
+                                            <!-- Mermaid diagram will be rendered here -->
+                                        </div>
+                                    </div>
+
+                                    <!-- Relationship Explanations -->
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="card bg-light">
+                                                <div class="card-header bg-primary text-white">
+                                                    <h6 class="mb-0"><i class="fas fa-sitemap me-2"></i>ความสัมพันธ์หลัก (Relationships)</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <ul class="list-unstyled">
+                                                        <li class="mb-3">
+                                                            <i class="fas fa-arrow-right text-primary me-2"></i>
+                                                            <strong>Users → Subjects</strong> (1:N)<br>
+                                                            <small class="text-muted">อาจารย์ 1 คน สามารถสอนได้หลายวิชา</small>
+                                                        </li>
+                                                        <li class="mb-3">
+                                                            <i class="fas fa-arrow-right text-success me-2"></i>
+                                                            <strong>Subjects → Exams</strong> (1:N)<br>
+                                                            <small class="text-muted">วิชา 1 วิชา สามารถมีได้หลายข้อสอบ</small>
+                                                        </li>
+                                                        <li class="mb-3">
+                                                            <i class="fas fa-arrow-right text-info me-2"></i>
+                                                            <strong>Exams → Questions</strong> (1:N)<br>
+                                                            <small class="text-muted">ข้อสอบ 1 ชุด มีหลายคำถาม</small>
+                                                        </li>
+                                                        <li class="mb-3">
+                                                            <i class="fas fa-arrow-right text-warning me-2"></i>
+                                                            <strong>Users → Exam Results</strong> (1:N)<br>
+                                                            <small class="text-muted">นักศึกษา 1 คน สอบได้หลายครั้ง</small>
+                                                        </li>
+                                                        <li>
+                                                            <i class="fas fa-arrow-right text-danger me-2"></i>
+                                                            <strong>Exams → Exam Results</strong> (1:N)<br>
+                                                            <small class="text-muted">ข้อสอบ 1 ชุด มีผู้เข้าสอบหลายคน</small>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-md-6">
+                                            <div class="card bg-light">
+                                                <div class="card-header bg-dark text-white">
+                                                    <h6 class="mb-0"><i class="fas fa-key me-2"></i>สัญลักษณ์และคำอธิบาย</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="row">
+                                                        <div class="col-12 mb-3">
+                                                            <h6 class="text-primary">ประเภทฟิลด์:</h6>
+                                                            <ul class="list-unstyled small">
+                                                                <li><span class="badge bg-warning me-2">PK</span>Primary Key - รหัสหลัก</li>
+                                                                <li><span class="badge bg-info me-2">FK</span>Foreign Key - รหัสอ้างอิง</li>
+                                                                <li><span class="badge bg-success me-2">UNIQUE</span>ข้อมูลไม่ซ้ำ</li>
+                                                                <li><span class="badge bg-secondary me-2">INDEX</span>ดัชนีเพื่อค้นหาเร็ว</li>
+                                                            </ul>
+                                                        </div>
+                                                        <div class="col-12 mb-3">
+                                                            <h6 class="text-success">ประเภทข้อมูล:</h6>
+                                                            <ul class="list-unstyled small">
+                                                                <li><span class="badge bg-primary me-2">INT</span>ตัวเลขจำนวนเต็ม</li>
+                                                                <li><span class="badge bg-info me-2">VARCHAR</span>ข้อความจำกัดความยาว</li>
+                                                                <li><span class="badge bg-success me-2">TEXT</span>ข้อความยาว</li>
+                                                                <li><span class="badge bg-warning me-2">DATETIME</span>วันที่และเวลา</li>
+                                                                <li><span class="badge bg-danger me-2">BOOLEAN</span>จริง/เท็จ</li>
+                                                                <li><span class="badge bg-dark me-2">JSON</span>ข้อมูล JSON</li>
+                                                            </ul>
+                                                        </div>
+                                                        <div class="col-12">
+                                                            <h6 class="text-info">ความสัมพันธ์:</h6>
+                                                            <ul class="list-unstyled small">
+                                                                <li><span class="badge bg-success me-2">1:1</span>หนึ่งต่อหนึ่ง</li>
+                                                                <li><span class="badge bg-warning me-2">1:N</span>หนึ่งต่อหลาย</li>
+                                                                <li><span class="badge bg-danger me-2">N:M</span>หลายต่อหลาย</li>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-light">
+                                    <div class="row text-center">
+                                        <div class="col-md-3">
+                                            <div class="text-primary">
+                                                <i class="fas fa-users fa-2x mb-2"></i>
+                                                <h6>Users Management</h6>
+                                                <small>จัดการผู้ใช้ 3 ประเภท</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="text-success">
+                                                <i class="fas fa-book fa-2x mb-2"></i>
+                                                <h6>Subject & Exam</h6>
+                                                <small>จัดการวิชาและข้อสอบ</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="text-info">
+                                                <i class="fas fa-question-circle fa-2x mb-2"></i>
+                                                <h6>Question Bank</h6>
+                                                <small>คลังคำถามยืดหยุ่น</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="text-warning">
+                                                <i class="fas fa-chart-bar fa-2x mb-2"></i>
+                                                <h6>Results & Analytics</h6>
+                                                <small>ผลสอบและการวิเคราะห์</small>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1288,6 +1432,8 @@ Content-Disposition: attachment; filename="report.csv"
     }
 }
 
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+
 <script>
     window.initializeDocTabs = function() {
         try {
@@ -1300,11 +1446,166 @@ Content-Disposition: attachment; filename="report.csv"
                     triggerEl.addEventListener('click', function (event) {
                         event.preventDefault();
                         tabTrigger.show();
+                        
+                        // Initialize Mermaid when Database Schema tab is clicked
+                        if (triggerEl.getAttribute('data-bs-target') === '#database-design') {
+                            setTimeout(function() {
+                                initializeMermaidERD();
+                            }, 100);
+                        }
                     });
                 }
             });
+
+            // Initialize Mermaid on page load if Database Schema tab is active
+            setTimeout(function() {
+                initializeMermaidERD();
+            }, 500);
+            
         } catch (error) {
             console.error('Error initializing documentation tabs:', error);
+        }
+    };
+
+    window.initializeMermaidERD = function() {
+        try {
+            if (typeof mermaid === 'undefined') {
+                console.log('Mermaid not loaded yet, retrying...');
+                setTimeout(initializeMermaidERD, 500);
+                return;
+            }
+
+            // Configure Mermaid
+            mermaid.initialize({
+                startOnLoad: false,
+                theme: 'default',
+                themeVariables: {
+                    primaryColor: '#667eea',
+                    primaryTextColor: '#333',
+                    primaryBorderColor: '#764ba2',
+                    lineColor: '#764ba2',
+                    secondaryColor: '#f8f9fa',
+                    tertiaryColor: '#e9ecef'
+                },
+                er: {
+                    diagramPadding: 20,
+                    layoutDirection: 'TB',
+                    minEntityWidth: 100,
+                    minEntityHeight: 75,
+                    entityPadding: 15,
+                    stroke: '#333333',
+                    fill: '#ECECFF',
+                    fontSize: 12
+                }
+            });
+
+            // Define the ER Diagram
+            const erdDefinition = `
+                erDiagram
+                    USERS {
+                        int id PK "รหัสผู้ใช้"
+                        string username UK "ชื่อผู้ใช้"
+                        string password "รหัสผ่าน(Hash)"
+                        string full_name "ชื่อ-นามสกุล"
+                        string email UK "อีเมล"
+                        string phone "เบอร์โทร"
+                        enum role "บทบาท"
+                        boolean is_active "สถานะใช้งาน"
+                        datetime created_at "วันที่สร้าง"
+                    }
+                    
+                    SUBJECTS {
+                        int id PK "รหัสวิชา"
+                        string name "ชื่อวิชา"
+                        string code UK "รหัสวิชา"
+                        text description "คำอธิบาย"
+                        int teacher_id FK "รหัสอาจารย์"
+                        boolean is_active "สถานะเปิดสอน"
+                        datetime created_at "วันที่สร้าง"
+                    }
+                    
+                    EXAMS {
+                        int id PK "รหัสข้อสอบ"
+                        string title "ชื่อข้อสอบ"
+                        text description "คำอธิบาย"
+                        int subject_id FK "รหัสวิชา"
+                        int time_limit "เวลาทำ(นาที)"
+                        int total_points "คะแนนเต็ม"
+                        datetime start_date "วันเริ่มสอบ"
+                        datetime end_date "วันปิดสอบ"
+                        boolean is_active "สถานะใช้งาน"
+                        datetime created_at "วันที่สร้าง"
+                    }
+                    
+                    QUESTIONS {
+                        int id PK "รหัสคำถาม"
+                        int exam_id FK "รหัสข้อสอบ"
+                        text question_text "ข้อความคำถาม"
+                        enum question_type "ประเภทคำถาม"
+                        json options "ตัวเลือก"
+                        text correct_answer "คำตอบถูกต้อง"
+                        int points "คะแนน"
+                    }
+                    
+                    EXAM_RESULTS {
+                        int id PK "รหัสผลสอบ"
+                        int student_id FK "รหัสนักศึกษา"
+                        int exam_id FK "รหัสข้อสอบ"
+                        int score "คะแนนที่ได้"
+                        int total_points "คะแนนเต็ม"
+                        decimal percentage "เปอร์เซ็นต์"
+                        json answers "คำตอบ"
+                        int time_taken "เวลาที่ใช้"
+                        datetime start_time "เวลาเริ่ม"
+                        datetime end_time "เวลาสิ้นสุด"
+                        boolean is_completed "สถานะสอบ"
+                    }
+
+                    %% Relationships
+                    USERS ||--o{ SUBJECTS : "teaches"
+                    SUBJECTS ||--o{ EXAMS : "contains"
+                    EXAMS ||--o{ QUESTIONS : "has"
+                    USERS ||--o{ EXAM_RESULTS : "takes"
+                    EXAMS ||--o{ EXAM_RESULTS : "generates"
+            `;
+
+            // Clear previous diagram
+            const container = document.getElementById('mermaid-erd');
+            if (container) {
+                container.innerHTML = '';
+                
+                // Render the diagram
+                mermaid.render('erd-diagram', erdDefinition).then(function(result) {
+                    container.innerHTML = result.svg;
+                    
+                    // Add some custom styling
+                    const svg = container.querySelector('svg');
+                    if (svg) {
+                        svg.style.width = '100%';
+                        svg.style.height = 'auto';
+                        svg.style.maxHeight = '800px';
+                    }
+                }).catch(function(error) {
+                    console.error('Error rendering Mermaid diagram:', error);
+                    container.innerHTML = `
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle me-2"></i>Unable to load ER Diagram</h6>
+                            <p class="mb-0">กำลังโหลด Mermaid.js... หากยังไม่แสดงผล กรุณารีเฟรชหน้าเว็บ</p>
+                        </div>
+                    `;
+                });
+            }
+        } catch (error) {
+            console.error('Error initializing Mermaid ERD:', error);
+            const container = document.getElementById('mermaid-erd');
+            if (container) {
+                container.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h6><i class="fas fa-times-circle me-2"></i>Error Loading Diagram</h6>
+                        <p class="mb-0">ไม่สามารถโหลด ER Diagram ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต</p>
+                    </div>
+                `;
+            }
         }
     };
 </script>
