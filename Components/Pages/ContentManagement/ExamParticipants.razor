@@ -1,0 +1,718 @@
+@page "/exam-participants"
+@using PISA_APP.Models
+@using PISA_APP.Services
+@using System.Text
+@inject MockDataService DataService
+@inject AuthenticationService AuthService
+@inject ModalService ModalService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>รายชื่อผู้สอบ</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-users me-2"></i>รายชื่อผู้สอบ</h2>
+                @if (IsAuthorized)
+                {
+                    <button class="btn btn-success" @onclick="ExportToCsv">
+                        <i class="fas fa-download me-2"></i>Export CSV
+                    </button>
+                }
+            </div>
+
+            @if (!IsAuthorized)
+            {
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    คุณไม่มีสิทธิ์เข้าถึงหน้านี้ (เฉพาะ Admin และ Teacher เท่านั้น)
+                </div>
+            }
+            else
+            {
+                <!-- Statistics Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h4>@TotalParticipants</h4>
+                                        <p class="mb-0">ผู้เข้าสอบทั้งหมด</p>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-users fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h4>@CompletedExams</h4>
+                                        <p class="mb-0">สอบเสร็จแล้ว</p>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-check-circle fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h4>@InProgressExams</h4>
+                                        <p class="mb-0">กำลังสอบ</p>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-clock fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h4>@AverageScore.ToString("F1")%</h4>
+                                        <p class="mb-0">คะแนนเฉลี่ย</p>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-chart-line fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- Participants Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5>รายชื่อผู้เข้าสอบ</h5>
+                    </div>
+                    <div class="card-body">
+                        <PaginatedTable TItem="ExamResult" 
+                                        Items="ExamResults"
+                                        SearchPlaceholder="ค้นหาผู้เข้าสอบ (ชื่อ, รหัส, วิชา)..."
+                                        SearchFilter="ExamResultSearchFilter"
+                                        FilterOptions="examResultFilterOptions"
+                                        ItemFilter="ExamResultItemFilter"
+                                        OnPaginationChanged="OnPaginationChanged">
+                            <TableHeader>
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>รหัสนักศึกษา</th>
+                                        <th>ชื่อ-นามสกุล</th>
+                                        <th>วิชา</th>
+                                        <th>ข้อสอบ</th>
+                                        <th>สถานะ</th>
+                                        <th>คะแนน</th>
+                                        <th>เปอร์เซ็นต์</th>
+                                        <th>เวลาที่ใช้</th>
+                                        <th>วันที่สอบ</th>
+                                        <th>การดำเนินการ</th>
+                                    </tr>
+                                </thead>
+                            </TableHeader>
+                            <TableRow Context="result">
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-info">@GetStudentId(result.StudentId)</span>
+                                    </td>
+                                    <td>@GetStudentName(result.StudentId)</td>
+                                    <td>@GetSubjectName(result.ExamId)</td>
+                                    <td>@GetExamTitle(result.ExamId)</td>
+                                    <td>@GetStatusBadge(result)</td>
+                                    <td>
+                                        @if (result.IsCompleted)
+                                        {
+                                            <span class="fw-bold">@result.Score/@result.TotalPoints</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (result.IsCompleted)
+                                        {
+                                            <span class="@GetScoreClass(result.Percentage)">
+                                                @result.Percentage.ToString("F1")%
+                                            </span>
+                                            <div class="progress mt-1" style="height: 4px;">
+                                                <div class="progress-bar @GetProgressBarClass(result.Percentage)" 
+                                                     style="width: @result.Percentage%" role="progressbar"></div>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (result.TimeTaken.HasValue)
+                                        {
+                                            @FormatDuration(result.TimeTaken.Value)
+                                        }
+                                        else if (!result.IsCompleted && result.StartTime != default)
+                                        {
+                                            <span class="text-warning">กำลังสอบ</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (result.StartTime != default)
+                                        {
+                                            @result.StartTime.ToString("dd/MM/yyyy HH:mm")
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">ยังไม่สอบ</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            @if (result.IsCompleted)
+                                            {
+                                                <button class="btn btn-info" @onclick="() => ViewAnswerDetails(result)" title="ดูคำตอบ">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            }
+                                            @if (CurrentUser?.Role == UserRole.Admin)
+                                            {
+                                                <button class="btn btn-warning" @onclick="() => ResetExam(result)" title="รีเซ็ตการสอบ">
+                                                    <i class="fas fa-redo"></i>
+                                                </button>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            </TableRow>
+                        </PaginatedTable>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Answer Details Modal -->
+<div class="modal fade" id="answerDetailsModal" tabindex="-1" aria-labelledby="answerDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="answerDetailsModalLabel">
+                    รายละเอียดการตอบ - @GetStudentName(SelectedResult?.StudentId ?? 0)
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                @if (SelectedResult != null && SelectedExam != null)
+                {
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title">ข้อมูลการสอบ</h6>
+                                    <p><strong>วิชา:</strong> @GetSubjectName(SelectedResult.ExamId)</p>
+                                    <p><strong>ข้อสอบ:</strong> @SelectedExam.Title</p>
+                                    <p><strong>เวลาที่เริ่มสอบ:</strong> @SelectedResult.StartTime.ToString("dd/MM/yyyy HH:mm")</p>
+                                    <p><strong>เวลาที่จบสอบ:</strong> @SelectedResult.EndTime?.ToString("dd/MM/yyyy HH:mm")</p>
+                                    <p><strong>เวลาที่ใช้:</strong> @(SelectedResult.TimeTaken.HasValue ? FormatDuration(SelectedResult.TimeTaken.Value) : "ไม่ระบุ")</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title">ผลการสอบ</h6>
+                                    <p><strong>คะแนนที่ได้:</strong> @SelectedResult.Score/@SelectedResult.TotalPoints</p>
+                                    <p><strong>เปอร์เซ็นต์:</strong> 
+                                        <span class="@GetScoreClass(SelectedResult.Percentage)">
+                                            @SelectedResult.Percentage.ToString("F1")%
+                                        </span>
+                                    </p>
+                                    <p><strong>ตอบถูก:</strong> @SelectedResult.Answers.Count(a => a.IsCorrect)/@SelectedResult.Answers.Count ข้อ</p>
+                                    <p><strong>เกรด:</strong> @GetGrade(SelectedResult.Percentage)</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h6>รายละเอียดการตอบคำถาม</h6>
+                        </div>
+                        <div class="card-body">
+                            @foreach (var (question, index) in SelectedExam.Questions.Select((q, i) => (q, i + 1)))
+                            {
+                                var answer = SelectedResult.Answers.FirstOrDefault(a => a.QuestionId == question.Id);
+                                <div class="card mb-3 @(answer?.IsCorrect == true ? "border-success" : "border-danger")">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0">คำถามที่ @index (@GetQuestionTypeText(question.Type)) - @question.Points คะแนน</h6>
+                                        <div>
+                                            @if (answer?.IsCorrect == true)
+                                            {
+                                                <span class="badge bg-success">ถูก (+@answer.Points คะแนน)</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger">ผิด (0 คะแนน)</span>
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <p><strong>คำถาม:</strong> @question.Text</p>
+                                        
+                                        @if (question.Type == QuestionType.MultipleChoice)
+                                        {
+                                            <p><strong>ตัวเลือก:</strong></p>
+                                            <ul class="list-unstyled">
+                                                @foreach (var (option, optionIndex) in question.Options.Select((o, i) => (o, i)))
+                                                {
+                                                    <li class="mb-1">
+                                                        <span class="badge @GetOptionBadgeClass(option, question.CorrectAnswer, answer?.Answer)">
+                                                            @((char)('A' + optionIndex))
+                                                        </span>
+                                                        @option
+                                                        @if (option == question.CorrectAnswer)
+                                                        {
+                                                            <i class="fas fa-check text-success ms-2" title="คำตอบที่ถูกต้อง"></i>
+                                                        }
+                                                        @if (option == answer?.Answer && option != question.CorrectAnswer)
+                                                        {
+                                                            <i class="fas fa-times text-danger ms-2" title="คำตอบที่เลือก (ผิด)"></i>
+                                                        }
+                                                    </li>
+                                                }
+                                            </ul>
+                                        }
+                                        
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <p><strong>คำตอบที่เลือก:</strong> 
+                                                    <span class="@(answer?.IsCorrect == true ? "text-success" : "text-danger")">
+                                                        @(answer?.Answer ?? "ไม่ได้ตอบ")
+                                                    </span>
+                                                </p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <p><strong>คำตอบที่ถูกต้อง:</strong> 
+                                                    <span class="text-success">@question.CorrectAnswer</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="HideAnswerModal">ปิด</button>
+                @if (SelectedResult != null)
+                {
+                    <button type="button" class="btn btn-primary" @onclick="() => PrintResult(SelectedResult)">
+                        <i class="fas fa-print me-2"></i>พิมพ์ผลการสอบ
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success/Error Messages -->
+@if (!string.IsNullOrEmpty(SuccessMessage))
+{
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div class="toast show" role="alert">
+            <div class="toast-header bg-success text-white">
+                <i class="fas fa-check-circle me-2"></i>
+                <strong class="me-auto">สำเร็จ</strong>
+                <button type="button" class="btn-close btn-close-white" @onclick="() => SuccessMessage = string.Empty"></button>
+            </div>
+            <div class="toast-body">
+                @SuccessMessage
+            </div>
+        </div>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div class="toast show" role="alert">
+            <div class="toast-header bg-danger text-white">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong class="me-auto">ข้อผิดพลาด</strong>
+                <button type="button" class="btn-close btn-close-white" @onclick="() => ErrorMessage = string.Empty"></button>
+            </div>
+            <div class="toast-body">
+                @ErrorMessage
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    // Properties
+    private List<ExamResult> ExamResults = new();
+    private List<Subject> AvailableSubjects = new();
+    private List<Exam> AllExams = new();
+    private List<Student> Students = new();
+    private User? CurrentUser;
+    private bool IsAuthorized => CurrentUser?.Role == UserRole.Admin || CurrentUser?.Role == UserRole.Teacher;
+
+    // Filter options for PaginatedTable
+    private List<PaginatedTable<ExamResult>.FilterOption> examResultFilterOptions = new();
+
+    // Statistics
+    private int TotalParticipants => ExamResults.Count;
+    private int CompletedExams => ExamResults.Count(r => r.IsCompleted);
+    private int InProgressExams => ExamResults.Count(r => !r.IsCompleted && r.StartTime != default);
+    private double AverageScore => ExamResults.Where(r => r.IsCompleted).Any() 
+        ? ExamResults.Where(r => r.IsCompleted).Average(r => r.Percentage) 
+        : 0;
+
+    // Modal
+    private ExamResult? SelectedResult = null;
+    private Exam? SelectedExam = null;
+
+    // Messages
+    private string SuccessMessage = string.Empty;
+    private string ErrorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CurrentUser = AuthService.CurrentUser;
+        if (!IsAuthorized)
+        {
+            return;
+        }
+
+        LoadData();
+        SetupFilterOptions();
+    }
+
+    private void LoadData()
+    {
+        ExamResults = DataService.GetAllExamResults();
+        Students = DataService.GetUsersByRole(UserRole.Student).Cast<Student>().ToList();
+        AllExams = DataService.GetAllExams();
+        AvailableSubjects = DataService.GetAllSubjects();
+
+        // If current user is teacher, filter to show only their subjects
+        if (CurrentUser?.Role == UserRole.Teacher)
+        {
+            var teacherId = CurrentUser.Id;
+            AvailableSubjects = AvailableSubjects.Where(s => s.TeacherId == teacherId).ToList();
+            var subjectIds = AvailableSubjects.Select(s => s.Id).ToList();
+            AllExams = AllExams.Where(e => subjectIds.Contains(e.SubjectId)).ToList();
+            var examIds = AllExams.Select(e => e.Id).ToList();
+            ExamResults = ExamResults.Where(r => examIds.Contains(r.ExamId)).ToList();
+        }
+    }
+
+    private void SetupFilterOptions()
+    {
+        examResultFilterOptions = new List<PaginatedTable<ExamResult>.FilterOption>
+        {
+            new() { Value = "completed", Text = "สอบเสร็จ" },
+            new() { Value = "in_progress", Text = "กำลังสอบ" },
+            new() { Value = "not_started", Text = "ยังไม่สอบ" },
+            new() { Value = "excellent", Text = "ดีเยี่ยม (80-100%)" },
+            new() { Value = "good", Text = "ดี (70-79%)" },
+            new() { Value = "fair", Text = "พอใช้ (60-69%)" },
+            new() { Value = "poor", Text = "ต้องปรับปรุง (0-59%)" }
+        };
+
+        // Add subject filter options
+        foreach (var subject in AvailableSubjects)
+        {
+            examResultFilterOptions.Add(new() { Value = $"subject_{subject.Id}", Text = $"วิชา: {subject.Name}" });
+        }
+
+        // Add exam filter options  
+        foreach (var exam in AllExams.Take(10)) // Limit to first 10 exams for UI
+        {
+            examResultFilterOptions.Add(new() { Value = $"exam_{exam.Id}", Text = $"ข้อสอบ: {exam.Title}" });
+        }
+    }
+
+    private bool ExamResultSearchFilter(ExamResult result, string searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return true;
+
+        var term = searchTerm.ToLower();
+        return GetStudentName(result.StudentId).ToLower().Contains(term) ||
+               GetStudentId(result.StudentId).ToLower().Contains(term) ||
+               GetStudentEmail(result.StudentId).ToLower().Contains(term) ||
+               GetSubjectName(result.ExamId).ToLower().Contains(term) ||
+               GetExamTitle(result.ExamId).ToLower().Contains(term);
+    }
+
+    private bool ExamResultItemFilter(ExamResult result, string filterValue)
+    {
+        return filterValue switch
+        {
+            "completed" => result.IsCompleted,
+            "in_progress" => !result.IsCompleted && result.StartTime != default,
+            "not_started" => result.StartTime == default,
+            "excellent" => result.IsCompleted && result.Percentage >= 80,
+            "good" => result.IsCompleted && result.Percentage >= 70 && result.Percentage < 80,
+            "fair" => result.IsCompleted && result.Percentage >= 60 && result.Percentage < 70,
+            "poor" => result.IsCompleted && result.Percentage < 60,
+            _ when filterValue.StartsWith("subject_") => 
+                int.TryParse(filterValue.Replace("subject_", ""), out int subjectId) && GetSubjectId(result.ExamId) == subjectId,
+            _ when filterValue.StartsWith("exam_") => 
+                int.TryParse(filterValue.Replace("exam_", ""), out int examId) && result.ExamId == examId,
+            _ => true
+        };
+    }
+
+    private async Task OnPaginationChanged(PaginationModel pagination)
+    {
+        // Handle pagination change if needed
+        await Task.CompletedTask;
+    }
+
+
+    // Helper Methods
+    private string GetStudentName(int studentId)
+    {
+        return Students.FirstOrDefault(s => s.Id == studentId)?.FullName ?? "ไม่ระบุ";
+    }
+
+    private string GetStudentId(int studentId)
+    {
+        return Students.FirstOrDefault(s => s.Id == studentId)?.StudentId ?? "ไม่ระบุ";
+    }
+
+    private string GetStudentEmail(int studentId)
+    {
+        return Students.FirstOrDefault(s => s.Id == studentId)?.Email ?? "";
+    }
+
+    private string GetSubjectName(int examId)
+    {
+        var exam = AllExams.FirstOrDefault(e => e.Id == examId);
+        if (exam == null) return "ไม่ระบุ";
+        
+        var subject = AvailableSubjects.FirstOrDefault(s => s.Id == exam.SubjectId);
+        return subject?.Name ?? "ไม่ระบุ";
+    }
+
+    private int GetSubjectId(int examId)
+    {
+        var exam = AllExams.FirstOrDefault(e => e.Id == examId);
+        return exam?.SubjectId ?? 0;
+    }
+
+    private string GetExamTitle(int examId)
+    {
+        return AllExams.FirstOrDefault(e => e.Id == examId)?.Title ?? "ไม่ระบุ";
+    }
+
+    private MarkupString GetStatusBadge(ExamResult result)
+    {
+        if (result.IsCompleted)
+        {
+            return new MarkupString("<span class=\"badge bg-success\">สอบเสร็จ</span>");
+        }
+        else if (result.StartTime != default)
+        {
+            return new MarkupString("<span class=\"badge bg-warning\">กำลังสอบ</span>");
+        }
+        else
+        {
+            return new MarkupString("<span class=\"badge bg-secondary\">ยังไม่สอบ</span>");
+        }
+    }
+
+    private string GetScoreClass(double percentage)
+    {
+        return percentage switch
+        {
+            >= 80 => "text-success fw-bold",
+            >= 70 => "text-info fw-bold",
+            >= 60 => "text-warning fw-bold",
+            _ => "text-danger fw-bold"
+        };
+    }
+
+    private string GetProgressBarClass(double percentage)
+    {
+        return percentage switch
+        {
+            >= 80 => "bg-success",
+            >= 70 => "bg-info",
+            >= 60 => "bg-warning",
+            _ => "bg-danger"
+        };
+    }
+
+    private string GetGrade(double percentage)
+    {
+        return percentage switch
+        {
+            >= 80 => "A",
+            >= 75 => "B+",
+            >= 70 => "B",
+            >= 65 => "C+",
+            >= 60 => "C",
+            >= 55 => "D+",
+            >= 50 => "D",
+            _ => "F"
+        };
+    }
+
+    private string GetQuestionTypeText(QuestionType type)
+    {
+        return type switch
+        {
+            QuestionType.MultipleChoice => "เลือกตอบ",
+            QuestionType.TrueFalse => "ถูก/ผิด",
+            QuestionType.ShortAnswer => "คำตอบสั้น",
+            _ => "ไม่ระบุ"
+        };
+    }
+
+    private string GetOptionBadgeClass(string option, string correctAnswer, string? userAnswer)
+    {
+        if (option == correctAnswer)
+        {
+            return "bg-success";
+        }
+        else if (option == userAnswer)
+        {
+            return "bg-danger";
+        }
+        else
+        {
+            return "bg-secondary";
+        }
+    }
+
+    private string FormatDuration(TimeSpan duration)
+    {
+        if (duration.TotalHours >= 1)
+        {
+            return $"{(int)duration.TotalHours}:{duration.Minutes:D2}:{duration.Seconds:D2}";
+        }
+        else
+        {
+            return $"{duration.Minutes}:{duration.Seconds:D2}";
+        }
+    }
+
+    // Modal Methods
+    private async Task ViewAnswerDetails(ExamResult result)
+    {
+        SelectedResult = result;
+        SelectedExam = AllExams.FirstOrDefault(e => e.Id == result.ExamId);
+        await ModalService.ShowAsync("answerDetailsModal");
+    }
+
+    private async Task HideAnswerModal()
+    {
+        await ModalService.HideAsync("answerDetailsModal");
+        SelectedResult = null;
+        SelectedExam = null;
+    }
+
+    // Actions
+    private async Task ResetExam(ExamResult result)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", 
+            $"คุณต้องการรีเซ็ตการสอบของ {GetStudentName(result.StudentId)} หรือไม่?\n\nการดำเนินการนี้จะลบข้อมูลการสอบทั้งหมด"))
+        {
+            try
+            {
+                DataService.DeleteExamResult(result.Id);
+                SuccessMessage = "รีเซ็ตการสอบสำเร็จ";
+                LoadData();
+                await Task.Delay(3000);
+                SuccessMessage = string.Empty;
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = $"เกิดข้อผิดพลาด: {ex.Message}";
+                await Task.Delay(5000);
+                ErrorMessage = string.Empty;
+            }
+        }
+    }
+
+    private async Task ExportToCsv()
+    {
+        try
+        {
+            var csv = new StringBuilder();
+            csv.AppendLine("รหัสนักศึกษา,ชื่อ-นามสกุล,อีเมล,วิชา,ข้อสอบ,สถานะ,คะแนน,คะแนนเต็ม,เปอร์เซ็นต์,เกรด,เวลาที่ใช้,วันที่เริ่มสอบ,วันที่จบสอบ");
+
+            foreach (var result in ExamResults)
+            {
+                var studentId = GetStudentId(result.StudentId);
+                var studentName = GetStudentName(result.StudentId);
+                var studentEmail = GetStudentEmail(result.StudentId);
+                var subjectName = GetSubjectName(result.ExamId);
+                var examTitle = GetExamTitle(result.ExamId);
+                var status = result.IsCompleted ? "สอบเสร็จ" : (result.StartTime != default ? "กำลังสอบ" : "ยังไม่สอบ");
+                var score = result.IsCompleted ? result.Score.ToString() : "-";
+                var totalPoints = result.TotalPoints.ToString();
+                var percentage = result.IsCompleted ? result.Percentage.ToString("F1") : "-";
+                var grade = result.IsCompleted ? GetGrade(result.Percentage) : "-";
+                var timeTaken = result.TimeTaken.HasValue ? FormatDuration(result.TimeTaken.Value) : "-";
+                var startTime = result.StartTime != default ? result.StartTime.ToString("dd/MM/yyyy HH:mm") : "-";
+                var endTime = result.EndTime?.ToString("dd/MM/yyyy HH:mm") ?? "-";
+
+                csv.AppendLine($"{studentId},{studentName},{studentEmail},{subjectName},{examTitle},{status},{score},{totalPoints},{percentage},{grade},{timeTaken},{startTime},{endTime}");
+            }
+
+            var fileName = $"ExamParticipants_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+            var content = Encoding.UTF8.GetBytes(csv.ToString());
+            var base64 = Convert.ToBase64String(content);
+
+            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, base64, "text/csv");
+            SuccessMessage = "Export ข้อมูลสำเร็จ";
+            await Task.Delay(3000);
+            SuccessMessage = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"เกิดข้อผิดพลาด: {ex.Message}";
+            await Task.Delay(5000);
+            ErrorMessage = string.Empty;
+        }
+    }
+
+    private async Task PrintResult(ExamResult result)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("window.print");
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"เกิดข้อผิดพลาด: {ex.Message}";
+            await Task.Delay(5000);
+            ErrorMessage = string.Empty;
+        }
+    }
+}

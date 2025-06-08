@@ -1,0 +1,1022 @@
+@page "/reports"
+@using PISA_APP.Models
+@using PISA_APP.Services
+@using PISA_APP.Components.Shared
+@inject AuthenticationService AuthService
+@inject MockDataService DataService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>รายงานและสถิติ - PISA</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    Navigation.NavigateTo("/login");
+    return;
+}
+
+@if (!AuthService.IsAdmin() && !AuthService.IsTeacher())
+{
+    Navigation.NavigateTo("/401");
+    return;
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        รายงานและสถิติ
+                    </h1>
+                    <p class="text-muted">ภาพรวมการใช้งานระบบข้อสอบออนไลน์</p>
+                </div>
+                <div>
+                    <button class="btn btn-primary" @onclick="ExportAllReports">
+                        <i class="fas fa-download me-2"></i>
+                        Export ทั้งหมด
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">@totalUsers</h4>
+                            <p class="card-text">ผู้ใช้ทั้งหมด</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-users fa-2x"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <small>Admin: @totalAdmins | Teacher: @totalTeachers | Student: @totalStudents</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">@totalSubjects</h4>
+                            <p class="card-text">วิชาทั้งหมด</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-book fa-2x"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <small>เปิดใช้งาน: @activeSubjects วิชา</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">@totalExams</h4>
+                            <p class="card-text">ข้อสอบทั้งหมด</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-file-alt fa-2x"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <small>เปิดใช้งาน: @activeExams ข้อสอบ</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">@totalExamResults</h4>
+                            <p class="card-text">ผลการสอบทั้งหมด</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-chart-line fa-2x"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <small>เสร็จสิ้น: @completedExams ครั้ง</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Exam Performance Chart -->
+        <div class="col-md-8 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-area me-2"></i>
+                        สถิติคะแนนข้อสอบ
+                    </h5>
+                    <div>
+                        <select class="form-select form-select-sm" @onchange="FilterBySubject">
+                            <option value="0">ทุกวิชา</option>
+                            @foreach (var subject in subjects)
+                            {
+                                <option value="@subject.Id">@subject.Name</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <canvas id="performanceChart" width="400" height="200"></canvas>
+                    </div>
+                    <div class="row text-center">
+                        <div class="col-3">
+                            <h6 class="text-success">@gradeACount</h6>
+                            <small class="text-muted">เกรด A (80-100%)</small>
+                        </div>
+                        <div class="col-3">
+                            <h6 class="text-info">@gradeBCount</h6>
+                            <small class="text-muted">เกรด B (70-79%)</small>
+                        </div>
+                        <div class="col-3">
+                            <h6 class="text-warning">@gradeCCount</h6>
+                            <small class="text-muted">เกรด C (60-69%)</small>
+                        </div>
+                        <div class="col-3">
+                            <h6 class="text-danger">@gradeFCount</h6>
+                            <small class="text-muted">เกรด F (0-59%)</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Performing Students -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-trophy me-2"></i>
+                        นักศึกษาเก่งอันดับต้น
+                    </h5>
+                </div>
+                <div class="card-body">
+                    @if (topStudents.Any())
+                    {
+                        @foreach (var (student, avg, index) in topStudents.Select((s, i) => (s.student, s.average, i + 1)))
+                        {
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="me-3">
+                                    @if (index == 1)
+                                    {
+                                        <span class="badge bg-warning rounded-pill">🥇</span>
+                                    }
+                                    else if (index == 2)
+                                    {
+                                        <span class="badge bg-secondary rounded-pill">🥈</span>
+                                    }
+                                    else if (index == 3)
+                                    {
+                                        <span class="badge bg-warning rounded-pill">🥉</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-light text-dark rounded-pill">@index</span>
+                                    }
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold">@student.FullName</div>
+                                    <small class="text-muted">@student.StudentId</small>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-bold text-success">@avg.ToString("F1")%</div>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted text-center">ยังไม่มีข้อมูลการสอบ</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Subject Performance -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-book me-2"></i>
+                        ผลการสอบแยกตามวิชา
+                    </h5>
+                    <button class="btn btn-outline-primary btn-sm" @onclick="() => ExportSubjectReport()">
+                        <i class="fas fa-download me-1"></i>
+                        Export
+                    </button>
+                </div>
+                <div class="card-body">
+                    <PaginatedTable TItem="SubjectStatistics" 
+                                    Items="subjectStats"
+                                    SearchPlaceholder="ค้นหาวิชา (ชื่อ, รหัสวิชา)..."
+                                    SearchFilter="SubjectStatsSearchFilter"
+                                    OnPaginationChanged="OnSubjectStatsPaginationChanged">
+                        <TableHeader>
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>วิชา</th>
+                                    <th class="text-center">จำนวนคนสอบ</th>
+                                    <th class="text-center">คะแนนเฉลี่ย</th>
+                                    <th class="text-center">คะแนนสูงสุด</th>
+                                </tr>
+                            </thead>
+                        </TableHeader>
+                        <TableRow Context="stat">
+                            <tr>
+                                <td>
+                                    <strong>@stat.SubjectName</strong><br>
+                                    <small class="text-muted">@stat.SubjectCode</small>
+                                </td>
+                                <td class="text-center">@stat.ExamCount</td>
+                                <td class="text-center">
+                                    <span class="badge bg-@(stat.AverageScore >= 80 ? "success" : stat.AverageScore >= 60 ? "warning" : "danger")">
+                                        @stat.AverageScore.ToString("F1")%
+                                    </span>
+                                </td>
+                                <td class="text-center">@stat.MaxScore.ToString("F1")%</td>
+                            </tr>
+                        </TableRow>
+                    </PaginatedTable>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-clock me-2"></i>
+                        กิจกรรมล่าสุด
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        @foreach (var activity in recentActivities.Take(10))
+                        {
+                            <div class="timeline-item mb-3">
+                                <div class="d-flex">
+                                    <div class="flex-shrink-0">
+                                        <div class="timeline-marker bg-@activity.Type"></div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <div class="timeline-content">
+                                            <h6 class="mb-1">@activity.Title</h6>
+                                            <p class="text-muted mb-1">@activity.Description</p>
+                                            <small class="text-muted">
+                                                <i class="fas fa-clock me-1"></i>
+                                                @activity.Timestamp.ToString("dd/MM/yyyy HH:mm")
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Reports Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-table me-2"></i>
+                        รายงานรายละเอียด
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="nav nav-tabs" id="reportTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="student-tab" data-bs-toggle="tab" data-bs-target="#student-report" type="button" role="tab">
+                                <i class="fas fa-user-graduate me-2"></i>รายงานนักศึกษา
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="exam-tab" data-bs-toggle="tab" data-bs-target="#exam-report" type="button" role="tab">
+                                <i class="fas fa-file-alt me-2"></i>รายงานข้อสอบ
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="usage-tab" data-bs-toggle="tab" data-bs-target="#usage-report" type="button" role="tab">
+                                <i class="fas fa-chart-pie me-2"></i>การใช้งานระบบ
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="reportTabsContent">
+                        <!-- Student Report -->
+                        <div class="tab-pane fade show active" id="student-report" role="tabpanel">
+                            <div class="mt-3">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6>รายละเอียดผลการสอบของนักศึกษา</h6>
+                                    <button class="btn btn-outline-success btn-sm" @onclick="() => ExportStudentReport()">
+                                        <i class="fas fa-file-excel me-1"></i>
+                                        Export CSV
+                                    </button>
+                                </div>
+                                <PaginatedTable TItem="StudentReport" 
+                                                Items="studentReports"
+                                                SearchPlaceholder="ค้นหานักศึกษา (รหัส, ชื่อ)..."
+                                                SearchFilter="StudentReportSearchFilter"
+                                                FilterOptions="studentReportFilterOptions"
+                                                ItemFilter="StudentReportItemFilter"
+                                                OnPaginationChanged="OnStudentReportPaginationChanged">
+                                    <TableHeader>
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>รหัสนักศึกษา</th>
+                                                <th>ชื่อ-นามสกุล</th>
+                                                <th class="text-center">จำนวนข้อสอบ</th>
+                                                <th class="text-center">คะแนนเฉลี่ย</th>
+                                                <th class="text-center">คะแนนสูงสุด</th>
+                                                <th class="text-center">สถานะ</th>
+                                            </tr>
+                                        </thead>
+                                    </TableHeader>
+                                    <TableRow Context="report">
+                                        <tr>
+                                            <td>@report.StudentId</td>
+                                            <td>@report.StudentName</td>
+                                            <td class="text-center">@report.ExamCount</td>
+                                            <td class="text-center">
+                                                <span class="badge bg-@(report.AverageScore >= 80 ? "success" : report.AverageScore >= 60 ? "warning" : "danger")">
+                                                    @report.AverageScore.ToString("F1")%
+                                                </span>
+                                            </td>
+                                            <td class="text-center">@report.MaxScore.ToString("F1")%</td>
+                                            <td class="text-center">
+                                                <span class="badge bg-@(report.IsActive ? "success" : "danger")">
+                                                    @(report.IsActive ? "ใช้งาน" : "ไม่ใช้งาน")
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </TableRow>
+                                </PaginatedTable>
+                            </div>
+                        </div>
+
+                        <!-- Exam Report -->
+                        <div class="tab-pane fade" id="exam-report" role="tabpanel">
+                            <div class="mt-3">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6>รายละเอียดข้อสอบในระบบ</h6>
+                                    <button class="btn btn-outline-success btn-sm" @onclick="() => ExportExamReport()">
+                                        <i class="fas fa-file-excel me-1"></i>
+                                        Export CSV
+                                    </button>
+                                </div>
+                                <PaginatedTable TItem="ExamReport" 
+                                                Items="examReports"
+                                                SearchPlaceholder="ค้นหาข้อสอบ (ชื่อ, วิชา)..."
+                                                SearchFilter="ExamReportSearchFilter"
+                                                FilterOptions="examReportFilterOptions"
+                                                ItemFilter="ExamReportItemFilter"
+                                                OnPaginationChanged="OnExamReportPaginationChanged">
+                                    <TableHeader>
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>ชื่อข้อสอบ</th>
+                                                <th>วิชา</th>
+                                                <th class="text-center">จำนวนข้อ</th>
+                                                <th class="text-center">คะแนนเต็ม</th>
+                                                <th class="text-center">ระยะเวลา (นาที)</th>
+                                                <th class="text-center">จำนวนคนสอบ</th>
+                                                <th class="text-center">สถานะ</th>
+                                            </tr>
+                                        </thead>
+                                    </TableHeader>
+                                    <TableRow Context="report">
+                                        <tr>
+                                            <td>@report.ExamTitle</td>
+                                            <td>@report.SubjectName</td>
+                                            <td class="text-center">@report.QuestionCount</td>
+                                            <td class="text-center">@report.TotalPoints</td>
+                                            <td class="text-center">@report.Duration</td>
+                                            <td class="text-center">@report.ParticipantCount</td>
+                                            <td class="text-center">
+                                                <span class="badge bg-@(report.IsActive ? "success" : "danger")">
+                                                    @(report.IsActive ? "เปิดใช้งาน" : "ปิดใช้งาน")
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </TableRow>
+                                </PaginatedTable>
+                            </div>
+                        </div>
+
+                        <!-- Usage Report -->
+                        <div class="tab-pane fade" id="usage-report" role="tabpanel">
+                            <div class="mt-3">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-body text-center">
+                                                <h5>การใช้งานโดยรวม</h5>
+                                                <canvas id="usageChart" width="300" height="300"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <h5>สถิติการใช้งาน</h5>
+                                                <table class="table table-borderless">
+                                                    <tr>
+                                                        <td><i class="fas fa-users text-primary me-2"></i>ผู้ใช้ที่ใช้งานล่าสุด:</td>
+                                                        <td><strong>@activeUsersToday</strong></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><i class="fas fa-file-alt text-success me-2"></i>ข้อสอบที่สร้างในเดือนนี้:</td>
+                                                        <td><strong>@examsCreatedThisMonth</strong></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><i class="fas fa-chart-line text-info me-2"></i>การสอบในสัปดาห์นี้:</td>
+                                                        <td><strong>@examsThisWeek</strong></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><i class="fas fa-clock text-warning me-2"></i>เวลาเฉลี่ยในการทำข้อสอบ:</td>
+                                                        <td><strong>@averageExamTime นาที</strong></td>
+                                                    </tr>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.timeline-marker {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-top: 4px;
+}
+
+.timeline-content {
+    border-left: 2px solid #e9ecef;
+    padding-left: 1rem;
+    margin-left: 6px;
+}
+
+.timeline-item:last-child .timeline-content {
+    border-left: none;
+}
+
+.bg-primary { background-color: #0d6efd !important; }
+.bg-success { background-color: #198754 !important; }
+.bg-info { background-color: #0dcaf0 !important; }
+.bg-warning { background-color: #ffc107 !important; }
+</style>
+
+@code {
+    // Statistics
+    private int totalUsers = 0;
+    private int totalAdmins = 0;
+    private int totalTeachers = 0;
+    private int totalStudents = 0;
+    private int totalSubjects = 0;
+    private int activeSubjects = 0;
+    private int totalExams = 0;
+    private int activeExams = 0;
+    private int totalExamResults = 0;
+    private int completedExams = 0;
+
+    // Grade distribution
+    private int gradeACount = 0;
+    private int gradeBCount = 0;
+    private int gradeCCount = 0;
+    private int gradeFCount = 0;
+
+    // Data collections
+    private List<Subject> subjects = new();
+    private List<(PISA_APP.Models.Student student, double average)> topStudents = new();
+    private List<SubjectStatistics> subjectStats = new();
+    private List<RecentActivity> recentActivities = new();
+    private List<StudentReport> studentReports = new();
+    private List<ExamReport> examReports = new();
+
+    // Usage statistics
+    private int activeUsersToday = 0;
+    private int examsCreatedThisMonth = 0;
+    private int examsThisWeek = 0;
+    private double averageExamTime = 0;
+    
+    // Filter options for PaginatedTables
+    private List<PaginatedTable<StudentReport>.FilterOption> studentReportFilterOptions = new();
+    private List<PaginatedTable<ExamReport>.FilterOption> examReportFilterOptions = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthService.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        if (!AuthService.IsAdmin() && !AuthService.IsTeacher())
+        {
+            Navigation.NavigateTo("/401");
+            return;
+        }
+
+        LoadStatistics();
+        LoadChartData();
+        LoadReportData();
+        SetupFilterOptions();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("initializeTabs");
+        }
+    }
+
+    private void LoadStatistics()
+    {
+        var users = DataService.GetAllUsers();
+        totalUsers = users.Count;
+        totalAdmins = users.Count(u => u.Role == UserRole.Admin);
+        totalTeachers = users.Count(u => u.Role == UserRole.Teacher);
+        totalStudents = users.Count(u => u.Role == UserRole.Student);
+
+        subjects = DataService.GetAllSubjects();
+        totalSubjects = subjects.Count;
+        activeSubjects = subjects.Count(s => s.IsActive);
+
+        var exams = DataService.GetAllExams();
+        totalExams = exams.Count;
+        activeExams = exams.Count(e => e.IsActive);
+
+        var examResults = DataService.GetAllExamResults();
+        totalExamResults = examResults.Count;
+        completedExams = examResults.Count(r => r.IsCompleted);
+
+        // Grade distribution
+        var completedResults = examResults.Where(r => r.IsCompleted).ToList();
+        gradeACount = completedResults.Count(r => r.Percentage >= 80);
+        gradeBCount = completedResults.Count(r => r.Percentage >= 70 && r.Percentage < 80);
+        gradeCCount = completedResults.Count(r => r.Percentage >= 60 && r.Percentage < 70);
+        gradeFCount = completedResults.Count(r => r.Percentage < 60);
+
+        // Usage statistics
+        activeUsersToday = users.Count(u => u.IsActive); // Mock data
+        examsCreatedThisMonth = exams.Count(e => e.CreatedDate >= DateTime.Now.AddMonths(-1));
+        examsThisWeek = examResults.Count(r => r.StartTime >= DateTime.Now.AddDays(-7));
+        
+        if (completedResults.Any())
+        {
+            averageExamTime = completedResults
+                .Where(r => r.TimeTaken.HasValue)
+                .Select(r => r.TimeTaken.Value.TotalMinutes)
+                .DefaultIfEmpty(0)
+                .Average();
+        }
+    }
+
+    private void LoadChartData()
+    {
+        // Top performing students
+        var students = DataService.GetUsersByRole(UserRole.Student).Cast<PISA_APP.Models.Student>();
+        var studentAverages = new List<(PISA_APP.Models.Student student, double average)>();
+
+        foreach (var student in students)
+        {
+            var results = DataService.GetExamResultsByStudent(student.Id)
+                .Where(r => r.IsCompleted);
+
+            if (results.Any())
+            {
+                var average = results.Average(r => r.Percentage);
+                studentAverages.Add((student, average));
+            }
+        }
+
+        topStudents = studentAverages
+            .OrderByDescending(x => x.average)
+            .Take(10)
+            .ToList();
+
+        // Subject statistics
+        subjectStats = subjects.Select(subject => {
+            var subjectExamResults = DataService.GetAllExamResults()
+                .Where(r => r.IsCompleted)
+                .Where(r => {
+                    var exam = DataService.GetExamById(r.ExamId);
+                    return exam != null && exam.SubjectId == subject.Id;
+                })
+                .ToList();
+
+            return new SubjectStatistics
+            {
+                SubjectName = subject.Name,
+                SubjectCode = subject.Code,
+                ExamCount = subjectExamResults.Count,
+                AverageScore = subjectExamResults.Any() ? subjectExamResults.Average(r => r.Percentage) : 0,
+                MaxScore = subjectExamResults.Any() ? subjectExamResults.Max(r => r.Percentage) : 0
+            };
+        }).ToList();
+
+        // Recent activities
+        recentActivities = new List<RecentActivity>();
+        
+        // Add exam completions
+        var recentResults = DataService.GetAllExamResults()
+            .Where(r => r.IsCompleted && r.EndTime >= DateTime.Now.AddDays(-7))
+            .OrderByDescending(r => r.EndTime)
+            .Take(5);
+
+        foreach (var result in recentResults)
+        {
+            var student = DataService.GetUserById(result.StudentId);
+            var exam = DataService.GetExamById(result.ExamId);
+            var subject = exam != null ? DataService.GetSubjectById(exam.SubjectId) : null;
+
+            recentActivities.Add(new RecentActivity
+            {
+                Title = "ข้อสอบเสร็จสิ้น",
+                Description = $"{student?.FullName} สอบ {exam?.Title} ในวิชา {subject?.Name} ได้คะแนน {result.Percentage:F1}%",
+                Timestamp = result.EndTime ?? DateTime.Now,
+                Type = result.Percentage >= 70 ? "success" : result.Percentage >= 50 ? "warning" : "danger"
+            });
+        }
+
+        // Add exam creations
+        var recentExams = DataService.GetAllExams()
+            .Where(e => e.CreatedDate >= DateTime.Now.AddDays(-7))
+            .OrderByDescending(e => e.CreatedDate)
+            .Take(3);
+
+        foreach (var exam in recentExams)
+        {
+            var subject = DataService.GetSubjectById(exam.SubjectId);
+            recentActivities.Add(new RecentActivity
+            {
+                Title = "ข้อสอบใหม่",
+                Description = $"สร้างข้อสอบ {exam.Title} ในวิชา {subject?.Name}",
+                Timestamp = exam.CreatedDate,
+                Type = "info"
+            });
+        }
+
+        recentActivities = recentActivities
+            .OrderByDescending(a => a.Timestamp)
+            .ToList();
+    }
+
+    private void LoadReportData()
+    {
+        // Student reports
+        var students = DataService.GetUsersByRole(UserRole.Student).Cast<PISA_APP.Models.Student>();
+        studentReports = students.Select(student => {
+            var results = DataService.GetExamResultsByStudent(student.Id)
+                .Where(r => r.IsCompleted);
+
+            return new StudentReport
+            {
+                StudentId = student.StudentId,
+                StudentName = student.FullName,
+                ExamCount = results.Count(),
+                AverageScore = results.Any() ? results.Average(r => r.Percentage) : 0,
+                MaxScore = results.Any() ? results.Max(r => r.Percentage) : 0,
+                IsActive = student.IsActive
+            };
+        }).ToList();
+
+        // Exam reports
+        var exams = DataService.GetAllExams();
+        examReports = exams.Select(exam => {
+            var subject = DataService.GetSubjectById(exam.SubjectId);
+            var results = DataService.GetExamResultsByExam(exam.Id);
+
+            return new ExamReport
+            {
+                ExamTitle = exam.Title,
+                SubjectName = subject?.Name ?? "ไม่ระบุ",
+                QuestionCount = exam.Questions.Count,
+                TotalPoints = exam.TotalPoints,
+                Duration = exam.Duration,
+                ParticipantCount = results.Count,
+                IsActive = exam.IsActive
+            };
+        }).ToList();
+    }
+
+    private async Task FilterBySubject(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int subjectId))
+        {
+            // Reload chart data for specific subject
+            // This would trigger chart update via JavaScript
+            await JSRuntime.InvokeVoidAsync("updatePerformanceChart", subjectId);
+        }
+    }
+
+    private async Task ExportAllReports()
+    {
+        try
+        {
+            // Create comprehensive report data
+            var reportData = new
+            {
+                Statistics = new
+                {
+                    TotalUsers = totalUsers,
+                    TotalSubjects = totalSubjects,
+                    TotalExams = totalExams,
+                    TotalExamResults = totalExamResults
+                },
+                StudentReports = studentReports,
+                ExamReports = examReports,
+                SubjectStats = subjectStats,
+                GeneratedAt = DateTime.Now
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(reportData, new System.Text.Json.JsonSerializerOptions 
+            { 
+                WriteIndented = true,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            });
+
+            await JSRuntime.InvokeVoidAsync("downloadFile", "PISA_Full_Report.json", json, "application/json");
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "เกิดข้อผิดพลาดในการ Export รายงาน");
+        }
+    }
+
+    private async Task ExportStudentReport()
+    {
+        try
+        {
+            var csv = "รหัสนักศึกษา,ชื่อ-นามสกุล,จำนวนข้อสอบ,คะแนนเฉลี่ย,คะแนนสูงสุด,สถานะ\n";
+            
+            foreach (var report in studentReports)
+            {
+                csv += $"{report.StudentId},{report.StudentName},{report.ExamCount},{report.AverageScore:F1},{report.MaxScore:F1},{(report.IsActive ? "ใช้งาน" : "ไม่ใช้งาน")}\n";
+            }
+
+            await JSRuntime.InvokeVoidAsync("downloadFile", "PISA_Student_Report.csv", csv, "text/csv");
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "เกิดข้อผิดพลาดในการ Export รายงานนักศึกษา");
+        }
+    }
+
+    private async Task ExportSubjectReport()
+    {
+        try
+        {
+            var csv = "วิชา,รหัสวิชา,จำนวนคนสอบ,คะแนนเฉลี่ย,คะแนนสูงสุด\n";
+            
+            foreach (var stat in subjectStats)
+            {
+                csv += $"{stat.SubjectName},{stat.SubjectCode},{stat.ExamCount},{stat.AverageScore:F1},{stat.MaxScore:F1}\n";
+            }
+
+            await JSRuntime.InvokeVoidAsync("downloadFile", "PISA_Subject_Report.csv", csv, "text/csv");
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "เกิดข้อผิดพลาดในการ Export รายงานวิชา");
+        }
+    }
+
+    private async Task ExportExamReport()
+    {
+        try
+        {
+            var csv = "ชื่อข้อสอบ,วิชา,จำนวนข้อ,คะแนนเต็ม,ระยะเวลา,จำนวนคนสอบ,สถานะ\n";
+            
+            foreach (var report in examReports)
+            {
+                csv += $"{report.ExamTitle},{report.SubjectName},{report.QuestionCount},{report.TotalPoints},{report.Duration},{report.ParticipantCount},{(report.IsActive ? "เปิดใช้งาน" : "ปิดใช้งาน")}\n";
+            }
+
+            await JSRuntime.InvokeVoidAsync("downloadFile", "PISA_Exam_Report.csv", csv, "text/csv");
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "เกิดข้อผิดพลาดในการ Export รายงานข้อสอบ");
+        }
+    }
+
+    // Search filters and pagination handlers
+    private bool SubjectStatsSearchFilter(SubjectStatistics stat, string searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return true;
+
+        var term = searchTerm.ToLower();
+        return stat.SubjectName.ToLower().Contains(term) ||
+               stat.SubjectCode.ToLower().Contains(term);
+    }
+
+    private async Task OnSubjectStatsPaginationChanged(PaginationModel pagination)
+    {
+        await Task.CompletedTask;
+    }
+
+    // Setup filter options for reports
+    private void SetupFilterOptions()
+    {
+        studentReportFilterOptions = new List<PaginatedTable<StudentReport>.FilterOption>
+        {
+            new() { Value = "active", Text = "ใช้งาน" },
+            new() { Value = "inactive", Text = "ไม่ใช้งาน" },
+            new() { Value = "high-score", Text = "คะแนนสูง (80%+)" },
+            new() { Value = "low-score", Text = "คะแนนต่ำ (<60%)" }
+        };
+
+        examReportFilterOptions = new List<PaginatedTable<ExamReport>.FilterOption>
+        {
+            new() { Value = "active", Text = "เปิดใช้งาน" },
+            new() { Value = "inactive", Text = "ปิดใช้งาน" },
+            new() { Value = "popular", Text = "คนสอบเยอะ (10+ คน)" },
+            new() { Value = "short", Text = "ระยะเวลาสั้น (<60 นาที)" }
+        };
+    }
+
+    // Student Report filters
+    private bool StudentReportSearchFilter(StudentReport report, string searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return true;
+
+        var term = searchTerm.ToLower();
+        return report.StudentName.ToLower().Contains(term) ||
+               report.StudentId.ToLower().Contains(term);
+    }
+
+    private bool StudentReportItemFilter(StudentReport report, string filterValue)
+    {
+        return filterValue switch
+        {
+            "active" => report.IsActive,
+            "inactive" => !report.IsActive,
+            "high-score" => report.AverageScore >= 80,
+            "low-score" => report.AverageScore < 60,
+            _ => true
+        };
+    }
+
+    private async Task OnStudentReportPaginationChanged(PaginationModel pagination)
+    {
+        await Task.CompletedTask;
+    }
+
+    // Exam Report filters
+    private bool ExamReportSearchFilter(ExamReport report, string searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return true;
+
+        var term = searchTerm.ToLower();
+        return report.ExamTitle.ToLower().Contains(term) ||
+               report.SubjectName.ToLower().Contains(term);
+    }
+
+    private bool ExamReportItemFilter(ExamReport report, string filterValue)
+    {
+        return filterValue switch
+        {
+            "active" => report.IsActive,
+            "inactive" => !report.IsActive,
+            "popular" => report.ParticipantCount >= 10,
+            "short" => report.Duration < 60,
+            _ => true
+        };
+    }
+
+    private async Task OnExamReportPaginationChanged(PaginationModel pagination)
+    {
+        await Task.CompletedTask;
+    }
+
+    // Report models
+    public class SubjectStatistics
+    {
+        public string SubjectName { get; set; } = string.Empty;
+        public string SubjectCode { get; set; } = string.Empty;
+        public int ExamCount { get; set; }
+        public double AverageScore { get; set; }
+        public double MaxScore { get; set; }
+    }
+
+    public class RecentActivity
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public DateTime Timestamp { get; set; }
+        public string Type { get; set; } = "info"; // success, warning, danger, info
+    }
+
+    public class StudentReport
+    {
+        public string StudentId { get; set; } = string.Empty;
+        public string StudentName { get; set; } = string.Empty;
+        public int ExamCount { get; set; }
+        public double AverageScore { get; set; }
+        public double MaxScore { get; set; }
+        public bool IsActive { get; set; }
+    }
+
+    public class ExamReport
+    {
+        public string ExamTitle { get; set; } = string.Empty;
+        public string SubjectName { get; set; } = string.Empty;
+        public int QuestionCount { get; set; }
+        public int TotalPoints { get; set; }
+        public int Duration { get; set; }
+        public int ParticipantCount { get; set; }
+        public bool IsActive { get; set; }
+    }
+}
+
+<script>
+    window.downloadFile = function (filename, content, contentType) {
+        const blob = new Blob([content], { type: contentType });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    };
+
+    window.updatePerformanceChart = function (subjectId) {
+        // Placeholder for chart update functionality
+        console.log('Updating chart for subject:', subjectId);
+    };
+
+    // Initialize Bootstrap tabs when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeTabs();
+    });
+
+    window.initializeTabs = function() {
+        try {
+            var triggerTabList = [].slice.call(document.querySelectorAll('#reportTabs button[data-bs-toggle="tab"]'));
+            console.log('Found tabs:', triggerTabList.length);
+            
+            triggerTabList.forEach(function (triggerEl) {
+                if (typeof bootstrap !== 'undefined' && bootstrap.Tab) {
+                    var tabTrigger = new bootstrap.Tab(triggerEl);
+                    
+                    triggerEl.addEventListener('click', function (event) {
+                        event.preventDefault();
+                        tabTrigger.show();
+                    });
+                } else {
+                    console.warn('Bootstrap not loaded or Tab component not available');
+                }
+            });
+        } catch (error) {
+            console.error('Error initializing tabs:', error);
+        }
+    };
+</script>

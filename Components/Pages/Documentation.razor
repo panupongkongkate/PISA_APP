@@ -1,0 +1,789 @@
+@page "/documentation"
+@using PISA_APP.Services
+@inject AuthenticationService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>เอกสารประกอบระบบ - PISA</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    Navigation.NavigateTo("/login");
+    return;
+}
+
+@if (!AuthService.IsAdmin())
+{
+    Navigation.NavigateTo("/401");
+    return;
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3">
+                        <i class="fas fa-book me-2"></i>
+                        เอกสารประกอบระบบ
+                    </h1>
+                    <p class="text-muted">คู่มือการใช้งานและโครงสร้างระบบข้อสอบออนไลน์ PISA</p>
+                </div>
+                <div>
+                    <button class="btn btn-primary" @onclick="ExportDocumentation">
+                        <i class="fas fa-download me-2"></i>
+                        Export PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <ul class="nav nav-tabs mb-4" id="docTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="database-tab" data-bs-toggle="tab" data-bs-target="#database-design" type="button" role="tab">
+                <i class="fas fa-database me-2"></i>Database Schema
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="api-tab" data-bs-toggle="tab" data-bs-target="#api-design" type="button" role="tab">
+                <i class="fas fa-code me-2"></i>API Design
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="structure-tab" data-bs-toggle="tab" data-bs-target="#project-structure" type="button" role="tab">
+                <i class="fas fa-folder-tree me-2"></i>Project Structure
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="guide-tab" data-bs-toggle="tab" data-bs-target="#user-guide" type="button" role="tab">
+                <i class="fas fa-question-circle me-2"></i>User Guide
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="docTabsContent">
+        <!-- Database Schema Design -->
+        <div class="tab-pane fade show active" id="database-design" role="tabpanel">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-database text-primary me-2"></i>
+                        Database Schema Design
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">โครงสร้างตารางและฟิลด์ในระบบข้อสอบออนไลน์ PISA</p>
+                    
+                    <!-- Users Table -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0"><i class="fas fa-table me-2"></i>users</h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm table-borderless">
+                                        <tbody>
+                                            <tr><td><code>id</code></td><td><span class="badge bg-warning">INT</span></td><td>Primary Key</td></tr>
+                                            <tr><td><code>username</code></td><td><span class="badge bg-info">VARCHAR(50)</span></td><td>ชื่อผู้ใช้</td></tr>
+                                            <tr><td><code>password</code></td><td><span class="badge bg-info">VARCHAR(255)</span></td><td>รหัสผ่าน (Hash)</td></tr>
+                                            <tr><td><code>full_name</code></td><td><span class="badge bg-info">VARCHAR(200)</span></td><td>ชื่อ-นามสกุล</td></tr>
+                                            <tr><td><code>email</code></td><td><span class="badge bg-info">VARCHAR(100)</span></td><td>อีเมล</td></tr>
+                                            <tr><td><code>phone</code></td><td><span class="badge bg-info">VARCHAR(20)</span></td><td>เบอร์โทร</td></tr>
+                                            <tr><td><code>role</code></td><td><span class="badge bg-success">ENUM</span></td><td>Admin, Teacher, Student</td></tr>
+                                            <tr><td><code>is_active</code></td><td><span class="badge bg-secondary">BOOLEAN</span></td><td>สถานะใช้งาน</td></tr>
+                                            <tr><td><code>created_at</code></td><td><span class="badge bg-dark">DATETIME</span></td><td>วันที่สร้าง</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-header bg-success text-white">
+                                    <h6 class="mb-0"><i class="fas fa-table me-2"></i>subjects</h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm table-borderless">
+                                        <tbody>
+                                            <tr><td><code>id</code></td><td><span class="badge bg-warning">INT</span></td><td>Primary Key</td></tr>
+                                            <tr><td><code>name</code></td><td><span class="badge bg-info">VARCHAR(100)</span></td><td>ชื่อวิชา</td></tr>
+                                            <tr><td><code>code</code></td><td><span class="badge bg-info">VARCHAR(20)</span></td><td>รหัสวิชา</td></tr>
+                                            <tr><td><code>description</code></td><td><span class="badge bg-info">TEXT</span></td><td>คำอธิบาย</td></tr>
+                                            <tr><td><code>teacher_id</code></td><td><span class="badge bg-warning">INT</span></td><td>Foreign Key → users.id</td></tr>
+                                            <tr><td><code>is_active</code></td><td><span class="badge bg-secondary">BOOLEAN</span></td><td>สถานะใช้งาน</td></tr>
+                                            <tr><td><code>created_at</code></td><td><span class="badge bg-dark">DATETIME</span></td><td>วันที่สร้าง</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Exams & Questions Tables -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-header bg-info text-white">
+                                    <h6 class="mb-0"><i class="fas fa-table me-2"></i>exams</h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm table-borderless">
+                                        <tbody>
+                                            <tr><td><code>id</code></td><td><span class="badge bg-warning">INT</span></td><td>Primary Key</td></tr>
+                                            <tr><td><code>subject_id</code></td><td><span class="badge bg-warning">INT</span></td><td>Foreign Key → subjects.id</td></tr>
+                                            <tr><td><code>title</code></td><td><span class="badge bg-info">VARCHAR(200)</span></td><td>ชื่อข้อสอบ</td></tr>
+                                            <tr><td><code>description</code></td><td><span class="badge bg-info">TEXT</span></td><td>คำอธิบาย</td></tr>
+                                            <tr><td><code>time_limit</code></td><td><span class="badge bg-warning">INT</span></td><td>เวลาจำกัด (นาที)</td></tr>
+                                            <tr><td><code>total_points</code></td><td><span class="badge bg-warning">INT</span></td><td>คะแนนเต็ม</td></tr>
+                                            <tr><td><code>start_date</code></td><td><span class="badge bg-dark">DATETIME</span></td><td>วันเริ่มสอบ</td></tr>
+                                            <tr><td><code>end_date</code></td><td><span class="badge bg-dark">DATETIME</span></td><td>วันสิ้นสุด</td></tr>
+                                            <tr><td><code>is_active</code></td><td><span class="badge bg-secondary">BOOLEAN</span></td><td>สถานะใช้งาน</td></tr>
+                                            <tr><td><code>created_at</code></td><td><span class="badge bg-dark">DATETIME</span></td><td>วันที่สร้าง</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-header bg-warning text-dark">
+                                    <h6 class="mb-0"><i class="fas fa-table me-2"></i>questions</h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm table-borderless">
+                                        <tbody>
+                                            <tr><td><code>id</code></td><td><span class="badge bg-warning">INT</span></td><td>Primary Key</td></tr>
+                                            <tr><td><code>exam_id</code></td><td><span class="badge bg-warning">INT</span></td><td>Foreign Key → exams.id</td></tr>
+                                            <tr><td><code>question_text</code></td><td><span class="badge bg-info">TEXT</span></td><td>ข้อความคำถาม</td></tr>
+                                            <tr><td><code>question_type</code></td><td><span class="badge bg-success">ENUM</span></td><td>MultipleChoice, ShortAnswer</td></tr>
+                                            <tr><td><code>options</code></td><td><span class="badge bg-info">JSON</span></td><td>ตัวเลือก (สำหรับ Multiple Choice)</td></tr>
+                                            <tr><td><code>correct_answer</code></td><td><span class="badge bg-info">TEXT</span></td><td>คำตอบที่ถูกต้อง</td></tr>
+                                            <tr><td><code>points</code></td><td><span class="badge bg-warning">INT</span></td><td>คะแนน</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Exam Results Table -->
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="card bg-light">
+                                <div class="card-header bg-danger text-white">
+                                    <h6 class="mb-0"><i class="fas fa-table me-2"></i>exam_results</h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm table-borderless">
+                                        <tbody>
+                                            <tr><td><code>id</code></td><td><span class="badge bg-warning">INT</span></td><td>Primary Key</td></tr>
+                                            <tr><td><code>student_id</code></td><td><span class="badge bg-warning">INT</span></td><td>Foreign Key → users.id</td></tr>
+                                            <tr><td><code>exam_id</code></td><td><span class="badge bg-warning">INT</span></td><td>Foreign Key → exams.id</td></tr>
+                                            <tr><td><code>score</code></td><td><span class="badge bg-warning">INT</span></td><td>คะแนนที่ได้</td></tr>
+                                            <tr><td><code>total_points</code></td><td><span class="badge bg-warning">INT</span></td><td>คะแนนเต็ม</td></tr>
+                                            <tr><td><code>percentage</code></td><td><span class="badge bg-warning">DECIMAL</span></td><td>เปอร์เซ็นต์</td></tr>
+                                            <tr><td><code>answers</code></td><td><span class="badge bg-info">JSON</span></td><td>คำตอบของนักศึกษา</td></tr>
+                                            <tr><td><code>time_taken</code></td><td><span class="badge bg-warning">INT</span></td><td>เวลาที่ใช้ (นาที)</td></tr>
+                                            <tr><td><code>start_time</code></td><td><span class="badge bg-dark">DATETIME</span></td><td>เวลาเริ่มสอบ</td></tr>
+                                            <tr><td><code>end_time</code></td><td><span class="badge bg-dark">DATETIME</span></td><td>เวลาสิ้นสุด</td></tr>
+                                            <tr><td><code>is_completed</code></td><td><span class="badge bg-secondary">BOOLEAN</span></td><td>สถานะการสอบ</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header bg-dark text-white">
+                                    <h6 class="mb-0"><i class="fas fa-sitemap me-2"></i>Relationships</h6>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="list-unstyled">
+                                        <li class="mb-2">
+                                            <i class="fas fa-arrow-right text-primary me-2"></i>
+                                            <code>users(1) → subjects(n)</code>
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fas fa-arrow-right text-success me-2"></i>
+                                            <code>subjects(1) → exams(n)</code>
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fas fa-arrow-right text-info me-2"></i>
+                                            <code>exams(1) → questions(n)</code>
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fas fa-arrow-right text-warning me-2"></i>
+                                            <code>users(1) → exam_results(n)</code>
+                                        </li>
+                                        <li>
+                                            <i class="fas fa-arrow-right text-danger me-2"></i>
+                                            <code>exams(1) → exam_results(n)</code>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Design -->
+        <div class="tab-pane fade" id="api-design" role="tabpanel">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-code text-success me-2"></i>
+                        API Design
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">REST API Endpoints พร้อม HTTP Methods และ Response Format</p>
+                    
+                    <!-- Authentication APIs -->
+                    <div class="mb-4">
+                        <h6 class="text-primary"><i class="fas fa-lock me-2"></i>Authentication</h6>
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Method</th>
+                                        <th>Endpoint</th>
+                                        <th>Description</th>
+                                        <th>Request Body</th>
+                                        <th>Response</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="badge bg-success">POST</span></td>
+                                        <td><code>/api/auth/login</code></td>
+                                        <td>เข้าสู่ระบบ</td>
+                                        <td><code>{ username, password }</code></td>
+                                        <td><code>{ token, user, role }</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge bg-warning">POST</span></td>
+                                        <td><code>/api/auth/logout</code></td>
+                                        <td>ออกจากระบบ</td>
+                                        <td><code>{ token }</code></td>
+                                        <td><code>{ message: "success" }</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge bg-info">PUT</span></td>
+                                        <td><code>/api/auth/change-password</code></td>
+                                        <td>เปลี่ยนรหัสผ่าน</td>
+                                        <td><code>{ oldPassword, newPassword }</code></td>
+                                        <td><code>{ message: "updated" }</code></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Users APIs -->
+                    <div class="mb-4">
+                        <h6 class="text-success"><i class="fas fa-users me-2"></i>Users Management</h6>
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Method</th>
+                                        <th>Endpoint</th>
+                                        <th>Description</th>
+                                        <th>Parameters</th>
+                                        <th>Response</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="badge bg-primary">GET</span></td>
+                                        <td><code>/api/users</code></td>
+                                        <td>ดึงรายการผู้ใช้ทั้งหมด</td>
+                                        <td><code>?page=1&limit=10&role=student</code></td>
+                                        <td><code>{ users[], total, page }</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge bg-primary">GET</span></td>
+                                        <td><code>/api/users/:id</code></td>
+                                        <td>ดึงข้อมูลผู้ใช้รายคน</td>
+                                        <td><code>id: number</code></td>
+                                        <td><code>{ user }</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge bg-success">POST</span></td>
+                                        <td><code>/api/users</code></td>
+                                        <td>สร้างผู้ใช้ใหม่</td>
+                                        <td><code>{ username, password, fullName, email, role }</code></td>
+                                        <td><code>{ user, message }</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge bg-info">PUT</span></td>
+                                        <td><code>/api/users/:id</code></td>
+                                        <td>แก้ไขข้อมูลผู้ใช้</td>
+                                        <td><code>{ fullName, email, phone, isActive }</code></td>
+                                        <td><code>{ user, message }</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge bg-danger">DELETE</span></td>
+                                        <td><code>/api/users/:id</code></td>
+                                        <td>ลบผู้ใช้</td>
+                                        <td><code>id: number</code></td>
+                                        <td><code>{ message }</code></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Subjects APIs -->
+                    <div class="mb-4">
+                        <h6 class="text-info"><i class="fas fa-book me-2"></i>Subjects Management</h6>
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Method</th>
+                                        <th>Endpoint</th>
+                                        <th>Description</th>
+                                        <th>Parameters</th>
+                                        <th>Response</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="badge bg-primary">GET</span></td>
+                                        <td><code>/api/subjects</code></td>
+                                        <td>ดึงรายการวิชาทั้งหมด</td>
+                                        <td><code>?teacherId=1&active=true</code></td>
+                                        <td><code>{ subjects[] }</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge bg-success">POST</span></td>
+                                        <td><code>/api/subjects</code></td>
+                                        <td>สร้างวิชาใหม่</td>
+                                        <td><code>{ name, code, description, teacherId }</code></td>
+                                        <td><code>{ subject, message }</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge bg-info">PUT</span></td>
+                                        <td><code>/api/subjects/:id</code></td>
+                                        <td>แก้ไขข้อมูลวิชา</td>
+                                        <td><code>{ name, description, isActive }</code></td>
+                                        <td><code>{ subject, message }</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge bg-danger">DELETE</span></td>
+                                        <td><code>/api/subjects/:id</code></td>
+                                        <td>ลบวิชา</td>
+                                        <td><code>id: number</code></td>
+                                        <td><code>{ message }</code></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Exams & Results APIs -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-warning"><i class="fas fa-file-alt me-2"></i>Exams & Questions</h6>
+                            <div class="table-responsive">
+                                <table class="table table-striped table-sm">
+                                    <tbody>
+                                        <tr><td><span class="badge bg-primary">GET</span></td><td><code>/api/exams</code></td></tr>
+                                        <tr><td><span class="badge bg-success">POST</span></td><td><code>/api/exams</code></td></tr>
+                                        <tr><td><span class="badge bg-info">PUT</span></td><td><code>/api/exams/:id</code></td></tr>
+                                        <tr><td><span class="badge bg-danger">DELETE</span></td><td><code>/api/exams/:id</code></td></tr>
+                                        <tr><td><span class="badge bg-primary">GET</span></td><td><code>/api/exams/:id/questions</code></td></tr>
+                                        <tr><td><span class="badge bg-success">POST</span></td><td><code>/api/questions</code></td></tr>
+                                        <tr><td><span class="badge bg-info">PUT</span></td><td><code>/api/questions/:id</code></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-danger"><i class="fas fa-chart-line me-2"></i>Exam Results & Reports</h6>
+                            <div class="table-responsive">
+                                <table class="table table-striped table-sm">
+                                    <tbody>
+                                        <tr><td><span class="badge bg-success">POST</span></td><td><code>/api/submit-exam</code></td></tr>
+                                        <tr><td><span class="badge bg-primary">GET</span></td><td><code>/api/results/:studentId</code></td></tr>
+                                        <tr><td><span class="badge bg-primary">GET</span></td><td><code>/api/reports/summary</code></td></tr>
+                                        <tr><td><span class="badge bg-primary">GET</span></td><td><code>/api/reports/students</code></td></tr>
+                                        <tr><td><span class="badge bg-primary">GET</span></td><td><code>/api/reports/subjects</code></td></tr>
+                                        <tr><td><span class="badge bg-primary">GET</span></td><td><code>/api/exports/csv</code></td></tr>
+                                        <tr><td><span class="badge bg-primary">GET</span></td><td><code>/api/exports/pdf</code></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Project Structure -->
+        <div class="tab-pane fade" id="project-structure" role="tabpanel">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-folder-tree text-warning me-2"></i>
+                        Project Structure
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">การจัดระเบียบไฟล์และโฟลเดอร์ในโปรเจค PISA Exam System</p>
+                    
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="bg-dark text-light p-3 rounded">
+                                <pre class="mb-0" style="color: #e6e6e6; font-family: 'Courier New', monospace;">
+<span style="color: #ffd700;">PISA_APP/</span>
+├── <span style="color: #87ceeb;">Components/</span>
+│   ├── <span style="color: #90ee90;">Layout/</span>                    <span style="color: #888;">// Header, Sidebar, Footer</span>
+│   │   ├── MainLayout.razor
+│   │   ├── MainLayout.razor.css
+│   │   ├── NavMenu.razor
+│   │   └── NavMenu.razor.css
+│   ├── <span style="color: #90ee90;">Pages/</span>                     <span style="color: #888;">// หน้าต่างๆ ของระบบ</span>
+│   │   ├── <span style="color: #ffb347;">Auth/</span>                  <span style="color: #888;">// การ Authentication</span>
+│   │   │   ├── Login.razor
+│   │   │   ├── ChangePassword.razor
+│   │   │   ├── Error.razor
+│   │   │   ├── NotFound.razor
+│   │   │   └── Unauthorized.razor
+│   │   ├── <span style="color: #ffb347;">UserManagement/</span>        <span style="color: #888;">// จัดการผู้ใช้</span>
+│   │   │   ├── ManageAdmins.razor
+│   │   │   ├── ManageTeachers.razor
+│   │   │   ├── ManageStudents.razor
+│   │   │   └── ManageRoles.razor
+│   │   ├── <span style="color: #ffb347;">ContentManagement/</span>     <span style="color: #888;">// จัดการเนื้อหา</span>
+│   │   │   ├── ManageSubjects.razor
+│   │   │   └── ExamParticipants.razor
+│   │   ├── <span style="color: #ffb347;">Student/</span>               <span style="color: #888;">// ส่วนของนักศึกษา</span>
+│   │   │   ├── TakeExam.razor
+│   │   │   ├── ExamResults.razor
+│   │   │   └── Subjects.razor
+│   │   ├── Dashboard.razor          <span style="color: #888;">// หน้าแดชบอร์ด</span>
+│   │   ├── Reports.razor            <span style="color: #888;">// รายงานและสถิติ</span>
+│   │   ├── Documentation.razor      <span style="color: #888;">// เอกสารประกอบ</span>
+│   │   ├── Profile.razor            <span style="color: #888;">// โปรไฟล์ผู้ใช้</span>
+│   │   └── Counter.razor            <span style="color: #888;">// หน้าตัวอย่าง</span>
+│   ├── <span style="color: #90ee90;">Shared/</span>                    <span style="color: #888;">// Components ที่ใช้ร่วมกัน</span>
+│   │   └── PaginatedTable.razor     <span style="color: #888;">// ตารางแบบ Pagination</span>
+│   ├── Routes.razor                 <span style="color: #888;">// การจัดการ Routing</span>
+│   ├── App.razor                    <span style="color: #888;">// Layout หลักของแอป</span>
+│   └── _Imports.razor               <span style="color: #888;">// Import namespaces</span>
+├── <span style="color: #87ceeb;">Models/</span>                        <span style="color: #888;">// Data Models</span>
+│   ├── User.cs                      <span style="color: #888;">// Admin, Teacher, Student</span>
+│   ├── Subject.cs                   <span style="color: #888;">// วิชาเรียน</span>
+│   ├── Exam.cs                      <span style="color: #888;">// ข้อสอบ</span>
+│   ├── ExamResult.cs                <span style="color: #888;">// ผลการสอบ</span>
+│   └── PaginationModel.cs           <span style="color: #888;">// สำหรับ Pagination</span>
+├── <span style="color: #87ceeb;">Services/</span>                      <span style="color: #888;">// Business Logic</span>
+│   ├── AuthenticationService.cs     <span style="color: #888;">// จัดการ Login/Logout</span>
+│   └── MockDataService.cs           <span style="color: #888;">// ข้อมูลจำลอง</span>
+├── <span style="color: #87ceeb;">wwwroot/</span>                       <span style="color: #888;">// Static Files</span>
+│   ├── <span style="color: #90ee90;">bootstrap/</span>                 <span style="color: #888;">// Bootstrap CSS</span>
+│   │   ├── bootstrap.min.css
+│   │   └── bootstrap.min.css.map
+│   ├── app.css                      <span style="color: #888;">// Custom CSS</span>
+│   └── favicon.png                  <span style="color: #888;">// ไอคอนเว็บไซต์</span>
+├── <span style="color: #87ceeb;">Properties/</span>                    <span style="color: #888;">// การตั้งค่าโปรเจค</span>
+│   └── launchSettings.json          <span style="color: #888;">// การตั้งค่า Development</span>
+├── Program.cs                       <span style="color: #888;">// Entry Point</span>
+├── appsettings.json                 <span style="color: #888;">// การตั้งค่าแอป</span>
+├── appsettings.Development.json     <span style="color: #888;">// การตั้งค่า Dev</span>
+├── PISA_APP.csproj                  <span style="color: #888;">// โปรเจคไฟล์</span>
+└── PISA_APP.sln                     <span style="color: #888;">// Solution ไฟล์</span>
+                                </pre>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header bg-info text-white">
+                                    <h6 class="mb-0"><i class="fas fa-layer-group me-2"></i>Architecture Layers</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <h6 class="text-primary">Presentation Layer</h6>
+                                        <ul class="list-unstyled ps-3">
+                                            <li><i class="fas fa-chevron-right text-muted me-2"></i>Razor Components</li>
+                                            <li><i class="fas fa-chevron-right text-muted me-2"></i>CSS Styling</li>
+                                            <li><i class="fas fa-chevron-right text-muted me-2"></i>JavaScript Integration</li>
+                                        </ul>
+                                    </div>
+                                    <div class="mb-3">
+                                        <h6 class="text-success">Business Layer</h6>
+                                        <ul class="list-unstyled ps-3">
+                                            <li><i class="fas fa-chevron-right text-muted me-2"></i>Services</li>
+                                            <li><i class="fas fa-chevron-right text-muted me-2"></i>Authentication</li>
+                                            <li><i class="fas fa-chevron-right text-muted me-2"></i>Data Processing</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h6 class="text-warning">Data Layer</h6>
+                                        <ul class="list-unstyled ps-3">
+                                            <li><i class="fas fa-chevron-right text-muted me-2"></i>Models</li>
+                                            <li><i class="fas fa-chevron-right text-muted me-2"></i>Mock Data Service</li>
+                                            <li><i class="fas fa-chevron-right text-muted me-2"></i>Data Validation</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card mt-3">
+                                <div class="card-header bg-success text-white">
+                                    <h6 class="mb-0"><i class="fas fa-tools me-2"></i>Technologies Used</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <span class="badge bg-primary me-1 mb-1">Blazor Server</span>
+                                            <span class="badge bg-info me-1 mb-1">C# .NET 8</span>
+                                            <span class="badge bg-success me-1 mb-1">Bootstrap 5</span>
+                                            <span class="badge bg-warning me-1 mb-1">FontAwesome</span>
+                                            <span class="badge bg-danger me-1 mb-1">SignalR</span>
+                                            <span class="badge bg-dark me-1 mb-1">Razor Pages</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Guide -->
+        <div class="tab-pane fade" id="user-guide" role="tabpanel">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-question-circle text-info me-2"></i>
+                        User Guide
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">คู่มือการใช้งานระบบข้อสอบออนไลน์ PISA สำหรับผู้ใช้แต่ละประเภท</p>
+                    
+                    <!-- Admin Guide -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="card border-danger">
+                                <div class="card-header bg-danger text-white">
+                                    <h6 class="mb-0"><i class="fas fa-user-shield me-2"></i>Admin Guide</h6>
+                                </div>
+                                <div class="card-body">
+                                    <ol class="ps-3">
+                                        <li class="mb-2">เข้าสู่ระบบด้วยบัญชี Admin</li>
+                                        <li class="mb-2">จัดการผู้ใช้ทั้งหมด (Admin, Teacher, Student)</li>
+                                        <li class="mb-2">ดูรายงานและสถิติการใช้งาน</li>
+                                        <li class="mb-2">ส่งออกข้อมูลเป็น CSV/PDF</li>
+                                        <li class="mb-2">ตั้งค่าระบบและสิทธิ์การเข้าถึง</li>
+                                        <li>ดูเอกสารประกอบระบบ</li>
+                                    </ol>
+                                    <div class="alert alert-info">
+                                        <small><i class="fas fa-info-circle me-1"></i>Admin มีสิทธิ์เข้าถึงทุกส่วนของระบบ</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="card border-warning">
+                                <div class="card-header bg-warning text-dark">
+                                    <h6 class="mb-0"><i class="fas fa-chalkboard-teacher me-2"></i>Teacher Guide</h6>
+                                </div>
+                                <div class="card-body">
+                                    <ol class="ps-3">
+                                        <li class="mb-2">เข้าสู่ระบบด้วยบัญชี Teacher</li>
+                                        <li class="mb-2">จัดการวิชาที่สอน</li>
+                                        <li class="mb-2">สร้างและแก้ไขข้อสอบ</li>
+                                        <li class="mb-2">ดูผลการสอบของนักศึกษา</li>
+                                        <li class="mb-2">จัดการผู้เข้าสอบ</li>
+                                        <li>ส่งออกรายงานผลการสอบ</li>
+                                    </ol>
+                                    <div class="alert alert-warning">
+                                        <small><i class="fas fa-exclamation-triangle me-1"></i>Teacher เข้าถึงได้เฉพาะวิชาที่ตนสอน</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="card border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0"><i class="fas fa-user-graduate me-2"></i>Student Guide</h6>
+                                </div>
+                                <div class="card-body">
+                                    <ol class="ps-3">
+                                        <li class="mb-2">เข้าสู่ระบบด้วยบัญชี Student</li>
+                                        <li class="mb-2">ดูวิชาที่ลงทะเบียนไว้</li>
+                                        <li class="mb-2">เข้าสู่การสอบตามเวลาที่กำหนด</li>
+                                        <li class="mb-2">ทำข้อสอบภายในเวลาที่กำหนด</li>
+                                        <li class="mb-2">ดูผลการสอบของตนเอง</li>
+                                        <li>แก้ไขโปรไฟล์ส่วนตัว</li>
+                                    </ol>
+                                    <div class="alert alert-primary">
+                                        <small><i class="fas fa-clock me-1"></i>Student ต้องทำข้อสอบตามเวลาที่กำหนด</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Feature Overview -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-dark text-white">
+                                    <h6 class="mb-0"><i class="fas fa-star me-2"></i>Key Features</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <ul class="list-unstyled">
+                                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>User Management</li>
+                                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Subject Management</li>
+                                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Exam Creation</li>
+                                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Online Testing</li>
+                                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Auto Grading</li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-6">
+                                            <ul class="list-unstyled">
+                                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Reports & Analytics</li>
+                                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Data Export</li>
+                                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Responsive Design</li>
+                                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Real-time Updates</li>
+                                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Security Controls</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-secondary text-white">
+                                    <h6 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Tips & Best Practices</h6>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="list-unstyled">
+                                        <li class="mb-2">
+                                            <i class="fas fa-shield-alt text-primary me-2"></i>
+                                            <strong>Security:</strong> เปลี่ยนรหัสผ่านเริ่มต้นทันที
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fas fa-clock text-warning me-2"></i>
+                                            <strong>Timing:</strong> ตั้งเวลาสอบให้เหมาะสมกับจำนวนข้อ
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fas fa-save text-success me-2"></i>
+                                            <strong>Backup:</strong> สำรองข้อมูลข้อสอบเป็นประจำ
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fas fa-chart-bar text-info me-2"></i>
+                                            <strong>Monitoring:</strong> ติดตามการใช้งานผ่านรายงาน
+                                        </li>
+                                        <li>
+                                            <i class="fas fa-users text-danger me-2"></i>
+                                            <strong>Training:</strong> อบรมผู้ใช้ก่อนใช้งานจริง
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private async Task ExportDocumentation()
+    {
+        try
+        {
+            var documentationContent = GenerateDocumentationContent();
+            await JSRuntime.InvokeVoidAsync("downloadFile", "PISA_Documentation.html", documentationContent, "text/html");
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "เกิดข้อผิดพลาดในการ Export เอกสาร");
+        }
+    }
+
+    private string GenerateDocumentationContent()
+    {
+        return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PISA Exam System Documentation</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 40px; }}
+        h1 {{ color: #2c3e50; }}
+        h2 {{ color: #34495e; border-bottom: 2px solid #3498db; }}
+        .table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
+        .table th, .table td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+        .table th {{ background-color: #f2f2f2; }}
+        .code {{ background-color: #f8f9fa; padding: 2px 4px; border-radius: 3px; font-family: monospace; }}
+    </style>
+</head>
+<body>
+    <h1>PISA Exam System Documentation</h1>
+    <p>Generated on: {DateTime.Now:yyyy-MM-dd HH:mm:ss}</p>
+    
+    <h2>Database Schema</h2>
+    <p>โครงสร้างฐานข้อมูลระบบข้อสอบออนไลน์ PISA</p>
+    
+    <h2>API Endpoints</h2>
+    <p>REST API สำหรับการเชื่อมต่อและจัดการข้อมูล</p>
+    
+    <h2>Project Structure</h2>
+    <p>การจัดระเบียบไฟล์และโฟลเดอร์ในโปรเจค</p>
+    
+    <h2>User Guide</h2>
+    <p>คู่มือการใช้งานสำหรับผู้ใช้แต่ละประเภท</p>
+</body>
+</html>";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("initializeDocTabs");
+        }
+    }
+}
+
+<script>
+    window.initializeDocTabs = function() {
+        try {
+            var triggerTabList = [].slice.call(document.querySelectorAll('#docTabs button[data-bs-toggle="tab"]'));
+            
+            triggerTabList.forEach(function (triggerEl) {
+                if (typeof bootstrap !== 'undefined' && bootstrap.Tab) {
+                    var tabTrigger = new bootstrap.Tab(triggerEl);
+                    
+                    triggerEl.addEventListener('click', function (event) {
+                        event.preventDefault();
+                        tabTrigger.show();
+                    });
+                }
+            });
+        } catch (error) {
+            console.error('Error initializing documentation tabs:', error);
+        }
+    };
+</script>

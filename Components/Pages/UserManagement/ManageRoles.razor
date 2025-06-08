@@ -1,0 +1,403 @@
+@page "/manage-roles"
+@using PISA_APP.Models
+@using PISA_APP.Services
+@inject MockDataService MockDataService
+@inject AuthenticationService AuthService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>จัดการสิทธิการใช้งาน</PageTitle>
+
+@if (!AuthService.IsAdmin())
+{
+    <div class="alert alert-danger">
+        <i class="fas fa-exclamation-triangle"></i>
+        คุณไม่มีสิทธิ์เข้าถึงหน้านี้ เฉพาะผู้ดูแลระบบเท่านั้น
+    </div>
+    return;
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-user-shield text-primary"></i> จัดการสิทธิการใช้งาน</h2>
+            </div>
+
+            @if (!string.IsNullOrEmpty(alertMessage))
+            {
+                <div class="alert @alertClass alert-dismissible fade show" role="alert">
+                    <i class="fas @alertIcon"></i>
+                    @alertMessage
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+
+            <!-- Search Bar -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" class="form-control" placeholder="ค้นหาสิทธิ์..."
+                               @bind="searchTerm" @bind:event="oninput" @onkeyup="FilterRoles">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Roles Table -->
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-table"></i> รายการสิทธิการใช้งาน</h5>
+                </div>
+                <div class="card-body">
+                    @if (filteredRoles.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th><i class="fas fa-hashtag"></i> ลำดับ</th>
+                                        <th><i class="fas fa-user-tag"></i> ชื่อสิทธิ์</th>
+                                        <th><i class="fas fa-align-left"></i> คำอธิบาย</th>
+                                        <th><i class="fas fa-key"></i> สิทธิ์ที่มี</th>
+                                        <th><i class="fas fa-users"></i> จำนวนผู้ใช้</th>
+                                        <th><i class="fas fa-cogs"></i> การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @{
+                                        var startIndex = (currentPage - 1) * pageSize;
+                                        var pagedRoles = filteredRoles.Skip(startIndex).Take(pageSize);
+                                    }
+                                    @foreach (var (role, index) in pagedRoles.Select((r, i) => (r, startIndex + i + 1)))
+                                    {
+                                        <tr>
+                                            <td>@index</td>
+                                            <td>
+                                                <span class="badge bg-@GetRoleBadgeColor(role.Role) fs-6">
+                                                    <i class="fas @GetRoleIcon(role.Role)"></i>
+                                                    @role.DisplayName
+                                                </span>
+                                            </td>
+                                            <td>@role.Description</td>
+                                            <td>
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    @foreach (var permission in role.Permissions)
+                                                    {
+                                                        <span class="badge bg-secondary">@permission</span>
+                                                    }
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info">@role.UserCount คน</span>
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-outline-primary btn-sm me-1"
+                                                        @onclick="() => ViewRoleDetails(role)"
+                                                        title="ดูรายละเอียด">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        @if (totalPages > 1)
+                        {
+                            <nav aria-label="Page navigation">
+                                <ul class="pagination justify-content-center">
+                                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                        <button class="page-link" @onclick="() => ChangePage(currentPage - 1)">
+                                            <i class="fas fa-chevron-left"></i>
+                                        </button>
+                                    </li>
+                                    @for (int i = 1; i <= totalPages; i++)
+                                    {
+                                        int pageNumber = i;
+                                        <li class="page-item @(currentPage == pageNumber ? "active" : "")">
+                                            <button class="page-link" @onclick="() => ChangePage(pageNumber)">
+                                                @pageNumber
+                                            </button>
+                                        </li>
+                                    }
+                                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                        <button class="page-link" @onclick="() => ChangePage(currentPage + 1)">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </button>
+                                    </li>
+                                </ul>
+                            </nav>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center py-4">
+                            <i class="fas fa-search fa-3x text-muted"></i>
+                            <p class="text-muted mt-2">ไม่พบข้อมูลสิทธิ์ที่ค้นหา</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Role Details Modal -->
+<div class="modal fade" id="roleDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-info-circle"></i>
+                    รายละเอียดสิทธิ์: @selectedRole?.DisplayName
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                @if (selectedRole != null)
+                {
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-info"></i> ข้อมูลทั่วไป</h6>
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>ชื่อสิทธิ์:</strong></td>
+                                    <td>
+                                        <span class="badge bg-@GetRoleBadgeColor(selectedRole.Role) fs-6">
+                                            @selectedRole.DisplayName
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>คำอธิบาย:</strong></td>
+                                    <td>@selectedRole.Description</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>จำนวนผู้ใช้:</strong></td>
+                                    <td><span class="badge bg-info">@selectedRole.UserCount คน</span></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-key"></i> สิทธิ์ทั้งหมด</h6>
+                            <div class="d-flex flex-wrap gap-2">
+                                @foreach (var permission in selectedRole.Permissions)
+                                {
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check"></i>
+                                        @permission
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h6><i class="fas fa-users"></i> รายชื่อผู้ใช้</h6>
+                    @if (selectedRoleUsers.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>ชื่อผู้ใช้</th>
+                                        <th>ชื่อ-นามสกุล</th>
+                                        <th>อีเมล</th>
+                                        <th>สถานะ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var user in selectedRoleUsers)
+                                    {
+                                        <tr>
+                                            <td>@user.Username</td>
+                                            <td>@user.FullName</td>
+                                            <td>@user.Email</td>
+                                            <td>
+                                                <span class="badge bg-@(user.IsActive ? "success" : "danger")">
+                                                    @(user.IsActive ? "ใช้งานได้" : "ปิดใช้งาน")
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted text-center">ไม่มีผู้ใช้ในสิทธิ์นี้</p>
+                    }
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> ปิด
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // Role data model
+    public class RoleInfo
+    {
+        public UserRole Role { get; set; }
+        public string DisplayName { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public List<string> Permissions { get; set; } = new();
+        public int UserCount { get; set; }
+    }
+
+    private List<RoleInfo> roles = new();
+    private List<RoleInfo> filteredRoles = new();
+    private List<User> selectedRoleUsers = new();
+    private RoleInfo? selectedRole;
+
+    // Search and pagination
+    private string searchTerm = string.Empty;
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages = 1;
+
+    // Alert messages
+    private string alertMessage = string.Empty;
+    private string alertClass = string.Empty;
+    private string alertIcon = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        LoadRoles();
+        FilterRoles();
+    }
+
+    private void LoadRoles()
+    {
+        var allUsers = MockDataService.GetAllUsers();
+
+        roles = new List<RoleInfo>
+        {
+            new RoleInfo
+            {
+                Role = UserRole.Admin,
+                DisplayName = "ผู้ดูแลระบบ",
+                Description = "มีสิทธิ์ในการจัดการระบบทั้งหมด รวมถึงการจัดการผู้ใช้ วิชา และข้อสอบ",
+                Permissions = new List<string>
+                {
+                    "จัดการผู้ใช้", "จัดการวิชา", "จัดการข้อสอบ", "ดูรายงาน",
+                    "จัดการระบบ", "สำรองข้อมูล", "ตั้งค่าระบบ"
+                },
+                UserCount = allUsers.Count(u => u.Role == UserRole.Admin)
+            },
+            new RoleInfo
+            {
+                Role = UserRole.Teacher,
+                DisplayName = "ครู/อาจารย์",
+                Description = "สามารถจัดการวิชาที่สอน สร้างข้อสอบ และดูผลการสอบของนักศึกษา",
+                Permissions = new List<string>
+                {
+                    "จัดการวิชาที่สอน", "สร้างข้อสอบ", "แก้ไขข้อสอบ", "ดูผลการสอบ",
+                    "ส่งออกรายงาน", "จัดการนักศึกษาในวิชา"
+                },
+                UserCount = allUsers.Count(u => u.Role == UserRole.Teacher)
+            },
+            new RoleInfo
+            {
+                Role = UserRole.Student,
+                DisplayName = "นักศึกษา",
+                Description = "สามารถดูวิชาที่ลงทะเบียน ทำข้อสอบ และดูผลการสอบของตนเอง",
+                Permissions = new List<string>
+                {
+                    "ดูวิชาที่ลงทะเบียน", "ทำข้อสอบ", "ดูผลการสอบ",
+                    "ดาวน์โหลดใบรายงานผล", "แก้ไขข้อมูลส่วนตัว"
+                },
+                UserCount = allUsers.Count(u => u.Role == UserRole.Student)
+            }
+        };
+    }
+
+    private void FilterRoles()
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            filteredRoles = roles.ToList();
+        }
+        else
+        {
+            var term = searchTerm.ToLower();
+            filteredRoles = roles.Where(r =>
+                r.DisplayName.ToLower().Contains(term) ||
+                r.Description.ToLower().Contains(term) ||
+                r.Permissions.Any(p => p.ToLower().Contains(term))
+            ).ToList();
+        }
+
+        totalPages = (int)Math.Ceiling((double)filteredRoles.Count / pageSize);
+        currentPage = 1;
+    }
+
+    private void ChangePage(int page)
+    {
+        if (page >= 1 && page <= totalPages)
+        {
+            currentPage = page;
+        }
+    }
+
+    private async Task ViewRoleDetails(RoleInfo role)
+    {
+        selectedRole = role;
+        selectedRoleUsers = MockDataService.GetUsersByRole(role.Role);
+
+        var modal = await JSRuntime.InvokeAsync<IJSObjectReference>("bootstrap.Modal.getOrCreateInstance", "#roleDetailsModal");
+        await modal.InvokeVoidAsync("show");
+    }
+
+    private string GetRoleBadgeColor(UserRole role)
+    {
+        return role switch
+        {
+            UserRole.Admin => "danger",
+            UserRole.Teacher => "warning",
+            UserRole.Student => "primary",
+            _ => "secondary"
+        };
+    }
+
+    private string GetRoleIcon(UserRole role)
+    {
+        return role switch
+        {
+            UserRole.Admin => "fa-user-shield",
+            UserRole.Teacher => "fa-chalkboard-teacher",
+            UserRole.Student => "fa-user-graduate",
+            _ => "fa-user"
+        };
+    }
+
+    private void ShowAlert(string message, string type)
+    {
+        alertMessage = message;
+        alertClass = type switch
+        {
+            "success" => "alert-success",
+            "error" => "alert-danger",
+            "warning" => "alert-warning",
+            _ => "alert-info"
+        };
+        alertIcon = type switch
+        {
+            "success" => "fa-check-circle",
+            "error" => "fa-exclamation-triangle",
+            "warning" => "fa-exclamation-triangle",
+            _ => "fa-info-circle"
+        };
+        StateHasChanged();
+    }
+}

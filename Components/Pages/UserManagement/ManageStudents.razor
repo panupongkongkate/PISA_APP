@@ -1,0 +1,923 @@
+@page "/manage-students"
+@using PISA_APP.Models
+@using PISA_APP.Services
+@using PISA_APP.Components.Shared
+@using System.ComponentModel.DataAnnotations
+@inject MockDataService MockDataService
+@inject AuthenticationService AuthService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>จัดการนักศึกษา</PageTitle>
+
+@if (!AuthService.IsAdmin())
+{
+    <div class="alert alert-danger">
+        <i class="fas fa-exclamation-triangle"></i>
+        คุณไม่มีสิทธิ์เข้าถึงหน้านี้ เฉพาะผู้ดูแลระบบเท่านั้น
+    </div>
+    return;
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-user-graduate text-primary"></i> จัดการนักศึกษา</h2>
+                <button class="btn btn-primary" @onclick="ShowAddStudentModal">
+                    <i class="fas fa-plus"></i> เพิ่มนักศึกษาใหม่
+                </button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(alertMessage))
+            {
+                <div class="alert @alertClass alert-dismissible fade show" role="alert">
+                    <i class="fas @alertIcon"></i>
+                    @alertMessage
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+
+
+            <!-- Statistics Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>@students.Count</h4>
+                                    <p class="mb-0">นักศึกษาทั้งหมด</p>
+                                </div>
+                                <i class="fas fa-user-graduate fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>@students.Count(s => s.IsActive)</h4>
+                                    <p class="mb-0">ใช้งานได้</p>
+                                </div>
+                                <i class="fas fa-check-circle fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>@students.Count(s => s.EnrolledSubjectIds.Any())</h4>
+                                    <p class="mb-0">มีวิชาลงทะเบียน</p>
+                                </div>
+                                <i class="fas fa-book fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>@students.Count(s => s.CreatedDate >= DateTime.Today.AddDays(-30))</h4>
+                                    <p class="mb-0">เพิ่มในเดือนนี้</p>
+                                </div>
+                                <i class="fas fa-calendar-plus fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Students Table -->
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-table"></i> รายการนักศึกษา</h5>
+                </div>
+                <div class="card-body">
+                    <PaginatedTable TItem="Student" 
+                                    Items="students"
+                                    SearchPlaceholder="ค้นหานักศึกษา (ชื่อ, รหัส, อีเมล)..."
+                                    SearchFilter="StudentSearchFilter"
+                                    FilterOptions="studentFilterOptions"
+                                    ItemFilter="StudentItemFilter"
+                                    OnPaginationChanged="OnPaginationChanged">
+                        <TableHeader>
+                            <thead class="table-dark">
+                                <tr>
+                                    <th><i class="fas fa-id-badge"></i> รหัสนักศึกษา</th>
+                                    <th><i class="fas fa-user"></i> ชื่อผู้ใช้</th>
+                                    <th><i class="fas fa-id-card"></i> ชื่อ-นามสกุล</th>
+                                    <th><i class="fas fa-envelope"></i> อีเมล</th>
+                                    <th><i class="fas fa-phone"></i> เบอร์โทร</th>
+                                    <th><i class="fas fa-book"></i> วิชาลงทะเบียน</th>
+                                    <th><i class="fas fa-toggle-on"></i> สถานะ</th>
+                                    <th><i class="fas fa-cogs"></i> การจัดการ</th>
+                                </tr>
+                            </thead>
+                        </TableHeader>
+                        <TableRow Context="student">
+                            <tr class="@(!student.IsActive ? "table-secondary" : "")">
+                                <td>
+                                    <strong class="text-primary">@student.StudentId</strong>
+                                </td>
+                                <td>@student.Username</td>
+                                <td>@student.FullName</td>
+                                <td>
+                                    <a href="mailto:@student.Email" class="text-decoration-none">
+                                        @student.Email
+                                    </a>
+                                </td>
+                                <td>@student.PhoneNumber</td>
+                                <td>
+                                    @if (student.EnrolledSubjectIds.Any())
+                                    {
+                                        var studentSubjects = allSubjects.Where(s => student.EnrolledSubjectIds.Contains(s.Id)).ToList();
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @foreach (var subject in studentSubjects.Take(2))
+                                            {
+                                                <span class="badge bg-secondary">@subject.Code</span>
+                                            }
+                                            @if (studentSubjects.Count > 2)
+                                            {
+                                                <span class="badge bg-info">+@(studentSubjects.Count - 2)</span>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">ยังไม่ได้ลงทะเบียน</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge bg-@(student.IsActive ? "success" : "danger")">
+                                        @(student.IsActive ? "ใช้งานได้" : "ปิดใช้งาน")
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <button class="btn btn-outline-primary btn-sm"
+                                                @onclick="() => ViewStudentDetails(student)"
+                                                title="ดูรายละเอียด">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn btn-outline-warning btn-sm"
+                                                @onclick="() => ShowEditStudentModal(student)"
+                                                title="แก้ไข">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-outline-info btn-sm"
+                                                @onclick="() => ShowEnrollSubjectsModal(student)"
+                                                title="ลงทะเบียนวิชา">
+                                            <i class="fas fa-book"></i>
+                                        </button>
+                                        <button class="btn btn-outline-@(student.IsActive ? "secondary" : "success") btn-sm"
+                                                @onclick="() => ToggleStudentStatus(student)"
+                                                title="@(student.IsActive ? "ปิดใช้งาน" : "เปิดใช้งาน")">
+                                            <i class="fas fa-@(student.IsActive ? "ban" : "check")"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger btn-sm"
+                                                @onclick="() => ShowDeleteConfirmation(student)"
+                                                title="ลบ">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </TableRow>
+                    </PaginatedTable>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Student Modal -->
+<div class="modal fade" id="studentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas @(isEditMode ? "fa-edit" : "fa-plus")"></i>
+                    @(isEditMode ? "แก้ไขข้อมูลนักศึกษา" : "เพิ่มนักศึกษาใหม่")
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <EditForm Model="studentModel" OnValidSubmit="SaveStudent">
+                <DataAnnotationsValidator />
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">รหัสนักศึกษา <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="studentModel.StudentId" />
+                                <ValidationMessage For="@(() => studentModel.StudentId)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">ชื่อผู้ใช้ <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="studentModel.Username" />
+                                <ValidationMessage For="@(() => studentModel.Username)" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">รหัสผ่าน <span class="text-danger">*</span></label>
+                                <InputText type="password" class="form-control" @bind-Value="studentModel.Password" />
+                                <ValidationMessage For="@(() => studentModel.Password)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">ชื่อ-นามสกุล <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="studentModel.FullName" />
+                                <ValidationMessage For="@(() => studentModel.FullName)" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">อีเมล <span class="text-danger">*</span></label>
+                                <InputText type="email" class="form-control" @bind-Value="studentModel.Email" />
+                                <ValidationMessage For="@(() => studentModel.Email)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">เบอร์โทรศัพท์</label>
+                                <InputText class="form-control" @bind-Value="studentModel.PhoneNumber" />
+                                <ValidationMessage For="@(() => studentModel.PhoneNumber)" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label class="form-label">วิชาที่ลงทะเบียน</label>
+                                <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                                    @foreach (var subject in allSubjects)
+                                    {
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox"
+                                                   id="student_subject_@subject.Id"
+                                                   checked="@(studentModel.EnrolledSubjectIds.Contains(subject.Id))"
+                                                   @onchange="@(e => ToggleStudentSubject(subject.Id, (bool)e.Value!))" />
+                                            <label class="form-check-label" for="student_subject_@subject.Id">
+                                                <strong>@subject.Code</strong> - @subject.Name
+                                                <br>
+                                                <small class="text-muted">@subject.Description</small>
+                                            </label>
+                                        </div>
+                                        <hr class="my-2">
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <InputCheckbox class="form-check-input" @bind-Value="studentModel.IsActive" />
+                                <label class="form-check-label">เปิดใช้งาน</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> ยกเลิก
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> บันทึก
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+<!-- Student Details Modal -->
+<div class="modal fade" id="studentDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-info-circle"></i>
+                    รายละเอียดนักศึกษา: @selectedStudent?.FullName
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                @if (selectedStudent != null)
+                {
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-user"></i> ข้อมูลส่วนตัว</h6>
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>รหัสนักศึกษา:</strong></td>
+                                    <td><span class="badge bg-primary">@selectedStudent.StudentId</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>ชื่อผู้ใช้:</strong></td>
+                                    <td>@selectedStudent.Username</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>ชื่อ-นามสกุล:</strong></td>
+                                    <td>@selectedStudent.FullName</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>อีเมล:</strong></td>
+                                    <td>
+                                        <a href="mailto:@selectedStudent.Email">@selectedStudent.Email</a>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>เบอร์โทร:</strong></td>
+                                    <td>@selectedStudent.PhoneNumber</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-info"></i> ข้อมูลระบบ</h6>
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>สิทธิ์:</strong></td>
+                                    <td>
+                                        <span class="badge bg-primary">
+                                            <i class="fas fa-user-graduate"></i>
+                                            นักศึกษา
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>สถานะ:</strong></td>
+                                    <td>
+                                        <span class="badge bg-@(selectedStudent.IsActive ? "success" : "danger")">
+                                            @(selectedStudent.IsActive ? "ใช้งานได้" : "ปิดใช้งาน")
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>วันที่สร้าง:</strong></td>
+                                    <td>@selectedStudent.CreatedDate.ToString("dd/MM/yyyy HH:mm")</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>ID:</strong></td>
+                                    <td>@selectedStudent.Id</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h6><i class="fas fa-book"></i> วิชาที่ลงทะเบียน</h6>
+                    @if (selectedStudent.EnrolledSubjectIds.Any())
+                    {
+                        var studentSubjects = allSubjects.Where(s => selectedStudent.EnrolledSubjectIds.Contains(s.Id)).ToList();
+                        <div class="row">
+                            @foreach (var subject in studentSubjects)
+                            {
+                                <div class="col-md-6 mb-2">
+                                    <div class="card border-success">
+                                        <div class="card-body p-2">
+                                            <h6 class="card-title mb-1">@subject.Code</h6>
+                                            <p class="card-text small mb-1">@subject.Name</p>
+                                            <small class="text-muted">@subject.Description</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <h6 class="mt-3"><i class="fas fa-chart-bar"></i> สถิติการสอบ</h6>
+                        <div class="row">
+                            @{
+                                var studentResults = MockDataService.GetExamResultsByStudent(selectedStudent.Id);
+                                var totalExams = studentResults.Count;
+                                var completedExams = studentResults.Count(r => r.IsCompleted);
+                                var avgScore = completedExams > 0 ? studentResults.Where(r => r.IsCompleted).Average(r => (double)r.Score / r.TotalPoints * 100) : 0;
+                            }
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <h4 class="text-primary">@totalExams</h4>
+                                    <small>ข้อสอบทั้งหมด</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <h4 class="text-success">@completedExams</h4>
+                                    <small>ทำเสร็จแล้ว</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <h4 class="text-warning">@avgScore.ToString("F1")%</h4>
+                                    <small>คะแนนเฉลี่ย</small>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted text-center">ยังไม่ได้ลงทะเบียนวิชาใดๆ</p>
+                    }
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> ปิด
+                </button>
+                <button type="button" class="btn btn-warning" @onclick="() => ShowEditStudentModal(selectedStudent!)">
+                    <i class="fas fa-edit"></i> แก้ไข
+                </button>
+                <button type="button" class="btn btn-info" @onclick="() => ShowEnrollSubjectsModal(selectedStudent!)">
+                    <i class="fas fa-book"></i> ลงทะเบียนวิชา
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enroll Subjects Modal -->
+<div class="modal fade" id="enrollSubjectsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-book"></i>
+                    ลงทะเบียนวิชาให้: @selectedStudent?.FullName
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                @if (selectedStudent != null)
+                {
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>วิชาที่มีให้ลงทะเบียน</h6>
+                            <div class="list-group" style="max-height: 300px; overflow-y: auto;">
+                                @foreach (var subject in allSubjects)
+                                {
+                                    <div class="list-group-item">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox"
+                                                   id="enroll_subject_@subject.Id"
+                                                   checked="@(tempEnrolledSubjects.Contains(subject.Id))"
+                                                   @onchange="@(e => ToggleSubjectEnrollment(subject.Id, (bool)e.Value!))" />
+                                            <label class="form-check-label" for="enroll_subject_@subject.Id">
+                                                <strong>@subject.Code</strong> - @subject.Name
+                                                <br>
+                                                <small class="text-muted">@subject.Description</small>
+                                                @{
+                                                    var teacher = MockDataService.GetUserById(subject.TeacherId);
+                                                }
+                                                @if (teacher != null)
+                                                {
+                                                    <br>
+                                                    <small class="text-info">อาจารย์: @teacher.FullName</small>
+                                                }
+                                            </label>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>วิชาที่ลงทะเบียนแล้ว (@tempEnrolledSubjects.Count วิชา)</h6>
+                            <div class="border rounded p-3" style="min-height: 300px;">
+                                @if (tempEnrolledSubjects.Any())
+                                {
+                                    @foreach (var subjectId in tempEnrolledSubjects)
+                                    {
+                                        var subject = allSubjects.FirstOrDefault(s => s.Id == subjectId);
+                                        if (subject != null)
+                                        {
+                                            <div class="alert alert-success d-flex justify-content-between align-items-center p-2 mb-2">
+                                                <div>
+                                                    <strong>@subject.Code</strong>
+                                                    <br>
+                                                    <small>@subject.Name</small>
+                                                </div>
+                                                <button class="btn btn-outline-danger btn-sm"
+                                                        @onclick="() => ToggleSubjectEnrollment(subjectId, false)">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    <p class="text-muted text-center mt-5">ยังไม่มีวิชาที่ลงทะเบียน</p>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> ยกเลิก
+                </button>
+                <button type="button" class="btn btn-primary" @onclick="SaveSubjectEnrollments">
+                    <i class="fas fa-save"></i> บันทึก
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle text-danger"></i>
+                    ยืนยันการลบ
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>คุณแน่ใจหรือไม่ที่จะลบนักศึกษา <strong>@studentToDelete?.FullName</strong>?</p>
+                <p class="text-muted">การดำเนินการนี้ไม่สามารถย้อนกลับได้ และจะลบข้อมูลการสอบทั้งหมดของนักศึกษาด้วย</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> ยกเลิก
+                </button>
+                <button type="button" class="btn btn-danger" @onclick="DeleteStudent">
+                    <i class="fas fa-trash"></i> ลบ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // Student form model
+    public class StudentFormModel
+    {
+        public int Id { get; set; }
+
+        [Required(ErrorMessage = "กรุณากรอกรหัสนักศึกษา")]
+        [StringLength(20, ErrorMessage = "รหัสนักศึกษาต้องไม่เกิน 20 ตัวอักษร")]
+        public string StudentId { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "กรุณากรอกชื่อผู้ใช้")]
+        [StringLength(50, ErrorMessage = "ชื่อผู้ใช้ต้องไม่เกิน 50 ตัวอักษร")]
+        public string Username { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "กรุณากรอกรหัสผ่าน")]
+        [StringLength(100, MinimumLength = 6, ErrorMessage = "รหัสผ่านต้องมีความยาว 6-100 ตัวอักษร")]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "กรุณากรอกชื่อ-นามสกุล")]
+        [StringLength(200, ErrorMessage = "ชื่อ-นามสกุลต้องไม่เกิน 200 ตัวอักษร")]
+        public string FullName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "กรุณากรอกอีเมล")]
+        [EmailAddress(ErrorMessage = "รูปแบบอีเมลไม่ถูกต้อง")]
+        public string Email { get; set; } = string.Empty;
+
+        [Phone(ErrorMessage = "รูปแบบเบอร์โทรไม่ถูกต้อง")]
+        public string PhoneNumber { get; set; } = string.Empty;
+
+        public bool IsActive { get; set; } = true;
+        public List<int> EnrolledSubjectIds { get; set; } = new();
+    }
+
+    private List<Student> students = new();
+    private List<Subject> allSubjects = new();
+    private Student? selectedStudent;
+    private Student? studentToDelete;
+
+    // Form data
+    private StudentFormModel studentModel = new();
+    private bool isEditMode = false;
+    private List<int> tempEnrolledSubjects = new();
+
+    // Filter options for PaginatedTable
+    private List<PaginatedTable<Student>.FilterOption> studentFilterOptions = new();
+
+    // Alert messages
+    private string alertMessage = string.Empty;
+    private string alertClass = string.Empty;
+    private string alertIcon = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        LoadData();
+        SetupFilterOptions();
+    }
+
+    private void LoadData()
+    {
+        students = MockDataService.GetUsersByRole(UserRole.Student).Cast<Student>().ToList();
+        allSubjects = MockDataService.GetAllSubjects();
+    }
+
+    private void SetupFilterOptions()
+    {
+        studentFilterOptions = new List<PaginatedTable<Student>.FilterOption>
+        {
+            new() { Value = "active", Text = "ใช้งานได้" },
+            new() { Value = "inactive", Text = "ปิดใช้งาน" },
+            new() { Value = "enrolled", Text = "มีวิชาลงทะเบียน" },
+            new() { Value = "not_enrolled", Text = "ยังไม่ได้ลงทะเบียน" }
+        };
+    }
+
+    private bool StudentSearchFilter(Student student, string searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return true;
+
+        var term = searchTerm.ToLower();
+        return student.StudentId.ToLower().Contains(term) ||
+               student.Username.ToLower().Contains(term) ||
+               student.FullName.ToLower().Contains(term) ||
+               student.Email.ToLower().Contains(term) ||
+               student.PhoneNumber.Contains(term);
+    }
+
+    private bool StudentItemFilter(Student student, string filterValue)
+    {
+        return filterValue switch
+        {
+            "active" => student.IsActive,
+            "inactive" => !student.IsActive,
+            "enrolled" => student.EnrolledSubjectIds.Any(),
+            "not_enrolled" => !student.EnrolledSubjectIds.Any(),
+            _ => true
+        };
+    }
+
+    private async Task OnPaginationChanged(PaginationModel pagination)
+    {
+        // Handle pagination change if needed
+        await Task.CompletedTask;
+    }
+
+
+    private async Task ShowAddStudentModal()
+    {
+        studentModel = new StudentFormModel();
+        isEditMode = false;
+        var modal = await JSRuntime.InvokeAsync<IJSObjectReference>("bootstrap.Modal.getOrCreateInstance", "#studentModal");
+        await modal.InvokeVoidAsync("show");
+    }
+
+    private async Task ShowEditStudentModal(Student student)
+    {
+        studentModel = new StudentFormModel
+        {
+            Id = student.Id,
+            StudentId = student.StudentId,
+            Username = student.Username,
+            Password = student.Password,
+            FullName = student.FullName,
+            Email = student.Email,
+            PhoneNumber = student.PhoneNumber,
+            IsActive = student.IsActive,
+            EnrolledSubjectIds = new List<int>(student.EnrolledSubjectIds)
+        };
+        isEditMode = true;
+        var detailsModal = await JSRuntime.InvokeAsync<IJSObjectReference>("bootstrap.Modal.getOrCreateInstance", "#studentDetailsModal");
+        await detailsModal.InvokeVoidAsync("hide");
+        var modal = await JSRuntime.InvokeAsync<IJSObjectReference>("bootstrap.Modal.getOrCreateInstance", "#studentModal");
+        await modal.InvokeVoidAsync("show");
+    }
+
+    private async Task ViewStudentDetails(Student student)
+    {
+        selectedStudent = student;
+        var modal = await JSRuntime.InvokeAsync<IJSObjectReference>("bootstrap.Modal.getOrCreateInstance", "#studentDetailsModal");
+        await modal.InvokeVoidAsync("show");
+    }
+
+    private async Task ShowEnrollSubjectsModal(Student student)
+    {
+        selectedStudent = student;
+        tempEnrolledSubjects = new List<int>(student.EnrolledSubjectIds);
+        var detailsModal = await JSRuntime.InvokeAsync<IJSObjectReference>("bootstrap.Modal.getOrCreateInstance", "#studentDetailsModal");
+        await detailsModal.InvokeVoidAsync("hide");
+        var enrollModal = await JSRuntime.InvokeAsync<IJSObjectReference>("bootstrap.Modal.getOrCreateInstance", "#enrollSubjectsModal");
+        await enrollModal.InvokeVoidAsync("show");
+    }
+
+    private async Task ShowDeleteConfirmation(Student student)
+    {
+        studentToDelete = student;
+        var modal = await JSRuntime.InvokeAsync<IJSObjectReference>("bootstrap.Modal.getOrCreateInstance", "#deleteConfirmModal");
+        await modal.InvokeVoidAsync("show");
+    }
+
+    private void ToggleStudentSubject(int subjectId, bool isEnrolled)
+    {
+        if (isEnrolled)
+        {
+            if (!studentModel.EnrolledSubjectIds.Contains(subjectId))
+            {
+                studentModel.EnrolledSubjectIds.Add(subjectId);
+            }
+        }
+        else
+        {
+            studentModel.EnrolledSubjectIds.Remove(subjectId);
+        }
+        StateHasChanged();
+    }
+
+    private void ToggleSubjectEnrollment(int subjectId, bool isEnrolled)
+    {
+        if (isEnrolled)
+        {
+            if (!tempEnrolledSubjects.Contains(subjectId))
+            {
+                tempEnrolledSubjects.Add(subjectId);
+            }
+        }
+        else
+        {
+            tempEnrolledSubjects.Remove(subjectId);
+        }
+        StateHasChanged();
+    }
+
+    private async Task SaveSubjectEnrollments()
+    {
+        if (selectedStudent == null) return;
+
+        try
+        {
+            selectedStudent.EnrolledSubjectIds = new List<int>(tempEnrolledSubjects);
+            MockDataService.UpdateUser(selectedStudent);
+            
+            ShowAlert($"ลงทะเบียนวิชาให้ {selectedStudent.FullName} เรียบร้อยแล้ว", "success");
+            
+            var modal = await JSRuntime.InvokeAsync<IJSObjectReference>("bootstrap.Modal.getOrCreateInstance", "#enrollSubjectsModal");
+            await modal.InvokeVoidAsync("hide");
+            LoadData();
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"เกิดข้อผิดพลาด: {ex.Message}", "error");
+        }
+    }
+
+    private async Task SaveStudent()
+    {
+        try
+        {
+            // Check for duplicate student ID (excluding current student if editing)
+            var existingStudent = students.FirstOrDefault(s => s.StudentId == studentModel.StudentId && s.Id != studentModel.Id);
+            if (existingStudent != null)
+            {
+                ShowAlert("รหัสนักศึกษานี้มีอยู่ในระบบแล้ว", "error");
+                return;
+            }
+
+            // Check for duplicate username (excluding current user if editing)
+            var existingUser = MockDataService.GetAllUsers()
+                .FirstOrDefault(u => u.Username == studentModel.Username && u.Id != studentModel.Id);
+            
+            if (existingUser != null)
+            {
+                ShowAlert("ชื่อผู้ใช้นี้มีอยู่ในระบบแล้ว", "error");
+                return;
+            }
+
+            // Check for duplicate email (excluding current user if editing)
+            existingUser = MockDataService.GetAllUsers()
+                .FirstOrDefault(u => u.Email == studentModel.Email && u.Id != studentModel.Id);
+            
+            if (existingUser != null)
+            {
+                ShowAlert("อีเมลนี้มีอยู่ในระบบแล้ว", "error");
+                return;
+            }
+
+            if (isEditMode)
+            {
+                var existingStudentObj = students.FirstOrDefault(s => s.Id == studentModel.Id);
+                if (existingStudentObj != null)
+                {
+                    existingStudentObj.StudentId = studentModel.StudentId;
+                    existingStudentObj.Username = studentModel.Username;
+                    existingStudentObj.Password = studentModel.Password;
+                    existingStudentObj.FullName = studentModel.FullName;
+                    existingStudentObj.Email = studentModel.Email;
+                    existingStudentObj.PhoneNumber = studentModel.PhoneNumber;
+                    existingStudentObj.IsActive = studentModel.IsActive;
+                    existingStudentObj.EnrolledSubjectIds = new List<int>(studentModel.EnrolledSubjectIds);
+                    
+                    MockDataService.UpdateUser(existingStudentObj);
+                    ShowAlert("แก้ไขข้อมูลนักศึกษาเรียบร้อยแล้ว", "success");
+                }
+            }
+            else
+            {
+                var newStudent = new Student
+                {
+                    StudentId = studentModel.StudentId,
+                    Username = studentModel.Username,
+                    Password = studentModel.Password,
+                    FullName = studentModel.FullName,
+                    Email = studentModel.Email,
+                    PhoneNumber = studentModel.PhoneNumber,
+                    IsActive = studentModel.IsActive,
+                    EnrolledSubjectIds = new List<int>(studentModel.EnrolledSubjectIds),
+                    CreatedDate = DateTime.Now
+                };
+
+                MockDataService.AddUser(newStudent);
+                ShowAlert("เพิ่มนักศึกษาใหม่เรียบร้อยแล้ว", "success");
+            }
+
+            var modal = await JSRuntime.InvokeAsync<IJSObjectReference>("bootstrap.Modal.getOrCreateInstance", "#studentModal");
+            await modal.InvokeVoidAsync("hide");
+            LoadData();
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"เกิดข้อผิดพลาด: {ex.Message}", "error");
+        }
+    }
+
+    private async Task ToggleStudentStatus(Student student)
+    {
+        try
+        {
+            student.IsActive = !student.IsActive;
+            MockDataService.UpdateUser(student);
+            
+            var status = student.IsActive ? "เปิดใช้งาน" : "ปิดใช้งาน";
+            ShowAlert($"{status}นักศึกษา {student.FullName} เรียบร้อยแล้ว", "success");
+            
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"เกิดข้อผิดพลาด: {ex.Message}", "error");
+        }
+    }
+
+    private async Task DeleteStudent()
+    {
+        try
+        {
+            if (studentToDelete == null) return;
+
+            // Delete related exam results
+            var examResults = MockDataService.GetExamResultsByStudent(studentToDelete.Id);
+            foreach (var result in examResults)
+            {
+                MockDataService.DeleteExamResult(result.Id);
+            }
+
+            MockDataService.DeleteUser(studentToDelete.Id);
+            ShowAlert($"ลบนักศึกษา {studentToDelete.FullName} เรียบร้อยแล้ว", "success");
+
+            var modal = await JSRuntime.InvokeAsync<IJSObjectReference>("bootstrap.Modal.getOrCreateInstance", "#deleteConfirmModal");
+            await modal.InvokeVoidAsync("hide");
+            
+            LoadData();
+            studentToDelete = null;
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"เกิดข้อผิดพลาด: {ex.Message}", "error");
+        }
+    }
+
+    private void ShowAlert(string message, string type)
+    {
+        alertMessage = message;
+        alertClass = type switch
+        {
+            "success" => "alert-success",
+            "error" => "alert-danger",
+            "warning" => "alert-warning",
+            _ => "alert-info"
+        };
+        alertIcon = type switch
+        {
+            "success" => "fa-check-circle",
+            "error" => "fa-exclamation-triangle",
+            "warning" => "fa-exclamation-triangle",
+            _ => "fa-info-circle"
+        };
+        StateHasChanged();
+    }
+}

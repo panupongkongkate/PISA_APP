@@ -1,0 +1,1151 @@
+@page "/manage-subjects"
+@using PISA_APP.Models
+@using PISA_APP.Services
+@inject MockDataService DataService
+@inject AuthenticationService AuthService
+@inject ModalService ModalService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>จัดการวิชา/ข้อสอบ</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-book-open me-2"></i>จัดการวิชา/ข้อสอบ</h2>
+                @if (IsAuthorized)
+                {
+                    <button class="btn btn-primary" @onclick="ShowAddSubjectModal">
+                        <i class="fas fa-plus me-2"></i>เพิ่มวิชาใหม่
+                    </button>
+                }
+            </div>
+
+            @if (!IsAuthorized)
+            {
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    คุณไม่มีสิทธิ์เข้าถึงหน้านี้ (เฉพาะ Admin และ Teacher เท่านั้น)
+                </div>
+            }
+            else
+            {
+
+                <!-- Subjects Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5>รายการวิชาทั้งหมด</h5>
+                    </div>
+                    <div class="card-body">
+                        <PaginatedTable TItem="Subject" 
+                                        Items="Subjects"
+                                        SearchPlaceholder="ค้นหาวิชา (รหัส, ชื่อ, อาจารย์)..."
+                                        SearchFilter="SubjectSearchFilter"
+                                        FilterOptions="subjectFilterOptions"
+                                        ItemFilter="SubjectItemFilter"
+                                        OnPaginationChanged="OnPaginationChanged">
+                            <TableHeader>
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>รหัสวิชา</th>
+                                        <th>ชื่อวิชา</th>
+                                        <th>อาจารย์ผู้สอน</th>
+                                        <th>จำนวนข้อสอบ</th>
+                                        <th>สถานะ</th>
+                                        <th>การดำเนินการ</th>
+                                    </tr>
+                                </thead>
+                            </TableHeader>
+                            <TableRow Context="subject">
+                                <tr>
+                                    <td><span class="badge bg-info">@subject.Code</span></td>
+                                    <td>@subject.Name</td>
+                                    <td>@GetTeacherName(subject.TeacherId)</td>
+                                    <td>
+                                        <span class="badge bg-secondary">
+                                            @subject.ExamIds.Count ข้อสอบ
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (subject.IsActive)
+                                        {
+                                            <span class="badge bg-success">ใช้งาน</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">ไม่ใช้งาน</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button class="btn btn-info" @onclick="() => ViewExams(subject.Id)" title="ดูข้อสอบ">
+                                                <i class="fas fa-tasks"></i>
+                                            </button>
+                                            @if (CanEditSubject(subject.TeacherId))
+                                            {
+                                                <button class="btn btn-warning" @onclick="() => ShowEditSubjectModal(subject)" title="แก้ไข">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-danger" @onclick="() => DeleteSubject(subject.Id)" title="ลบ">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            </TableRow>
+                        </PaginatedTable>
+                    </div>
+                </div>
+
+                <!-- Exams Section -->
+                @if (ViewingExamsForSubject != null)
+                {
+                    <div class="card mt-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5>ข้อสอบในวิชา: @ViewingExamsForSubject.Name</h5>
+                            <div>
+                                @if (CanEditSubject(ViewingExamsForSubject.TeacherId))
+                                {
+                                    <button class="btn btn-success btn-sm me-2" @onclick="ShowAddExamModal">
+                                        <i class="fas fa-plus me-1"></i>เพิ่มข้อสอบ
+                                    </button>
+                                }
+                                <button class="btn btn-secondary btn-sm" @onclick="HideExams">
+                                    <i class="fas fa-times me-1"></i>ปิด
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            @if (SubjectExams.Any())
+                            {
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>ชื่อข้อสอบ</th>
+                                                <th>คำอธิบาย</th>
+                                                <th>วันที่เปิดสอบ</th>
+                                                <th>วันที่ปิดสอบ</th>
+                                                <th>ระยะเวลา (นาที)</th>
+                                                <th>คะแนนเต็ม</th>
+                                                <th>จำนวนคำถาม</th>
+                                                <th>สถานะ</th>
+                                                <th style="width: 200px;">การดำเนินการ</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var exam in SubjectExams)
+                                            {
+                                                <tr>
+                                                    <td>@exam.Title</td>
+                                                    <td>@exam.Description</td>
+                                                    <td>@exam.StartDate.ToString("dd/MM/yyyy HH:mm")</td>
+                                                    <td>@exam.EndDate.ToString("dd/MM/yyyy HH:mm")</td>
+                                                    <td>@exam.Duration</td>
+                                                    <td>@exam.TotalPoints</td>
+                                                    <td>@exam.Questions.Count</td>
+                                                    <td>
+                                                        @if (exam.IsActive && exam.StartDate <= DateTime.Now && exam.EndDate >= DateTime.Now)
+                                                        {
+                                                            <span class="badge bg-success">เปิดสอบ</span>
+                                                        }
+                                                        else if (exam.EndDate < DateTime.Now)
+                                                        {
+                                                            <span class="badge bg-secondary">ปิดสอบแล้ว</span>
+                                                        }
+                                                        else if (exam.StartDate > DateTime.Now)
+                                                        {
+                                                            <span class="badge bg-warning">รอเปิดสอบ</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="badge bg-danger">ไม่ใช้งาน</span>
+                                                        }
+                                                    </td>
+                                                    <td>
+                                                        <div class="btn-group btn-group-sm" role="group">
+                                                            <button class="btn btn-info" @onclick="() => ViewQuestions(exam)" title="ดูคำถาม">
+                                                                <i class="fas fa-question-circle"></i>
+                                                            </button>
+                                                            @if (CanEditSubject(ViewingExamsForSubject.TeacherId))
+                                                            {
+                                                                <button class="btn btn-warning" @onclick="() => ShowEditExamModal(exam)" title="แก้ไข">
+                                                                    <i class="fas fa-edit"></i>
+                                                                </button>
+                                                                <button class="btn btn-danger" @onclick="() => DeleteExam(exam.Id)" title="ลบ">
+                                                                    <i class="fas fa-trash"></i>
+                                                                </button>
+                                                            }
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-center py-4">
+                                    <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                                    <h5 class="text-muted">ยังไม่มีข้อสอบในวิชานี้</h5>
+                                    @if (CanEditSubject(ViewingExamsForSubject.TeacherId))
+                                    {
+                                        <button class="btn btn-primary" @onclick="ShowAddExamModal">
+                                            <i class="fas fa-plus me-2"></i>เพิ่มข้อสอบแรก
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- Questions Section -->
+                @if (ViewingQuestionsForExam != null)
+                {
+                    <div class="card mt-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5>คำถามในข้อสอบ: @ViewingQuestionsForExam.Title</h5>
+                            <div>
+                                @if (CanEditSubject(ViewingExamsForSubject?.TeacherId ?? 0))
+                                {
+                                    <button class="btn btn-success btn-sm me-2" @onclick="ShowAddQuestionModal">
+                                        <i class="fas fa-plus me-1"></i>เพิ่มคำถาม
+                                    </button>
+                                }
+                                <button class="btn btn-secondary btn-sm" @onclick="HideQuestions">
+                                    <i class="fas fa-times me-1"></i>ปิด
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            @if (ViewingQuestionsForExam.Questions.Any())
+                            {
+                                @foreach (var (question, index) in ViewingQuestionsForExam.Questions.Select((q, i) => (q, i + 1)))
+                                {
+                                    <div class="card mb-3">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0">คำถามที่ @index (@GetQuestionTypeText(question.Type)) - @question.Points คะแนน</h6>
+                                            @if (CanEditSubject(ViewingExamsForSubject?.TeacherId ?? 0))
+                                            {
+                                                <div class="btn-group btn-group-sm">
+                                                    <button class="btn btn-warning" @onclick="() => ShowEditQuestionModal(question)" title="แก้ไข">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn btn-danger" @onclick="() => DeleteQuestion(question.Id)" title="ลบ">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            }
+                                        </div>
+                                        <div class="card-body">
+                                            <p><strong>คำถาม:</strong> @question.Text</p>
+                                            @if (question.Type == QuestionType.MultipleChoice)
+                                            {
+                                                <p><strong>ตัวเลือก:</strong></p>
+                                                <ul>
+                                                    @foreach (var (option, optionIndex) in question.Options.Select((o, i) => (o, i)))
+                                                    {
+                                                        <li class="@(option == question.CorrectAnswer ? "text-success fw-bold" : "")">
+                                                            @((char)('A' + optionIndex)). @option
+                                                            @if (option == question.CorrectAnswer)
+                                                            {
+                                                                <i class="fas fa-check text-success ms-2"></i>
+                                                            }
+                                                        </li>
+                                                    }
+                                                </ul>
+                                            }
+                                            else if (question.Type == QuestionType.TrueFalse)
+                                            {
+                                                <p><strong>คำตอบที่ถูกต้อง:</strong> 
+                                                    <span class="badge bg-success">@question.CorrectAnswer</span>
+                                                </p>
+                                            }
+                                            else
+                                            {
+                                                <p><strong>คำตอบที่ถูกต้อง:</strong> 
+                                                    <span class="badge bg-success">@question.CorrectAnswer</span>
+                                                </p>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="text-center py-4">
+                                    <i class="fas fa-question fa-3x text-muted mb-3"></i>
+                                    <h5 class="text-muted">ยังไม่มีคำถามในข้อสอบนี้</h5>
+                                    @if (CanEditSubject(ViewingExamsForSubject?.TeacherId ?? 0))
+                                    {
+                                        <button class="btn btn-primary" @onclick="ShowAddQuestionModal">
+                                            <i class="fas fa-plus me-2"></i>เพิ่มคำถามแรก
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Subject Modal -->
+<div class="modal fade" id="subjectModal" tabindex="-1" aria-labelledby="subjectModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="subjectModalLabel">@(IsEditingSubject ? "แก้ไขวิชา" : "เพิ่มวิชาใหม่")</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <EditForm Model="CurrentSubject" OnValidSubmit="SaveSubject">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="text-danger" />
+
+                    <div class="mb-3">
+                        <label class="form-label">รหัสวิชา *</label>
+                        <InputText class="form-control" @bind-Value="CurrentSubject.Code" placeholder="เช่น MATH101" />
+                        <ValidationMessage For="@(() => CurrentSubject.Code)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">ชื่อวิชา *</label>
+                        <InputText class="form-control" @bind-Value="CurrentSubject.Name" placeholder="เช่น คณิตศาสตร์พื้นฐาน" />
+                        <ValidationMessage For="@(() => CurrentSubject.Name)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">คำอธิบาย</label>
+                        <InputTextArea class="form-control" rows="3" @bind-Value="CurrentSubject.Description" placeholder="อธิบายเกี่ยวกับวิชานี้" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">อาจารย์ผู้สอน *</label>
+                        <InputSelect class="form-control" @bind-Value="CurrentSubject.TeacherId">
+                            <option value="0">-- เลือกอาจารย์ --</option>
+                            @foreach (var teacher in Teachers)
+                            {
+                                <option value="@teacher.Id">@teacher.FullName</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => CurrentSubject.TeacherId)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <InputCheckbox class="form-check-input" @bind-Value="CurrentSubject.IsActive" />
+                            <label class="form-check-label">ใช้งาน</label>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="HideSubjectModal">ยกเลิก</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>@(IsEditingSubject ? "บันทึกการแก้ไข" : "เพิ่มวิชา")
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Exam Modal -->
+<div class="modal fade" id="examModal" tabindex="-1" aria-labelledby="examModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="examModalLabel">@(IsEditingExam ? "แก้ไขข้อสอบ" : "เพิ่มข้อสอบใหม่")</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <EditForm Model="CurrentExam" OnValidSubmit="SaveExam">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="text-danger" />
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">ชื่อข้อสอบ *</label>
+                                <InputText class="form-control" @bind-Value="CurrentExam.Title" placeholder="เช่น สอบกลางภาค" />
+                                <ValidationMessage For="@(() => CurrentExam.Title)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">ระยะเวลาทำข้อสอบ (นาที) *</label>
+                                <InputNumber class="form-control" @bind-Value="CurrentExam.Duration" placeholder="120" />
+                                <ValidationMessage For="@(() => CurrentExam.Duration)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">คำอธิบาย</label>
+                        <InputTextArea class="form-control" rows="3" @bind-Value="CurrentExam.Description" placeholder="อธิบายเกี่ยวกับข้อสอบนี้" />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">วันที่เปิดสอบ *</label>
+                                <InputDate class="form-control" @bind-Value="ExamStartDate" />
+                                <ValidationMessage For="@(() => CurrentExam.StartDate)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">เวลาเปิดสอบ *</label>
+                                <input type="time" class="form-control" @bind="ExamStartTimeOnly" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">วันที่ปิดสอบ *</label>
+                                <InputDate class="form-control" @bind-Value="ExamEndDate" />
+                                <ValidationMessage For="@(() => CurrentExam.EndDate)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">เวลาปิดสอบ *</label>
+                                <input type="time" class="form-control" @bind="ExamEndTimeOnly" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <InputCheckbox class="form-check-input" @bind-Value="CurrentExam.IsActive" />
+                            <label class="form-check-label">ใช้งาน</label>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="HideExamModal">ยกเลิก</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>@(IsEditingExam ? "บันทึกการแก้ไข" : "เพิ่มข้อสอบ")
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Question Modal -->
+<div class="modal fade" id="questionModal" tabindex="-1" aria-labelledby="questionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="questionModalLabel">@(IsEditingQuestion ? "แก้ไขคำถาม" : "เพิ่มคำถามใหม่")</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <EditForm Model="CurrentQuestion" OnValidSubmit="SaveQuestion">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="text-danger" />
+
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label class="form-label">คำถาม *</label>
+                                <InputTextArea class="form-control" rows="3" @bind-Value="CurrentQuestion.Text" placeholder="ใส่คำถามที่นี่" />
+                                <ValidationMessage For="@(() => CurrentQuestion.Text)" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">ประเภทคำถาม *</label>
+                                <InputSelect class="form-control" @bind-Value="CurrentQuestion.Type" @onchange="OnQuestionTypeChanged">
+                                    <option value="@QuestionType.MultipleChoice">เลือกตอบ (Multiple Choice)</option>
+                                    <option value="@QuestionType.TrueFalse">ถูก/ผิด (True/False)</option>
+                                    <option value="@QuestionType.ShortAnswer">คำตอบสั้น (Short Answer)</option>
+                                </InputSelect>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">คะแนน *</label>
+                                <InputNumber class="form-control" @bind-Value="CurrentQuestion.Points" min="1" />
+                                <ValidationMessage For="@(() => CurrentQuestion.Points)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (CurrentQuestion.Type == QuestionType.MultipleChoice)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">ตัวเลือก *</label>
+                            @for (int i = 0; i < QuestionOptions.Count; i++)
+                            {
+                                int index = i; // Capture for lambda
+                                <div class="input-group mb-2">
+                                    <span class="input-group-text">@((char)('A' + index))</span>
+                                    <input type="text" class="form-control" @bind="QuestionOptions[index]" placeholder="ตัวเลือกที่ @(index + 1)" />
+                                    <div class="input-group-text">
+                                        <input type="radio" name="correctAnswer" @onchange="@(() => SetCorrectAnswer(QuestionOptions[index]))" 
+                                               checked="@(CurrentQuestion.CorrectAnswer == QuestionOptions[index])" />
+                                        <small class="ms-1">ถูก</small>
+                                    </div>
+                                </div>
+                            }
+                            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddOption">
+                                <i class="fas fa-plus me-1"></i>เพิ่มตัวเลือก
+                            </button>
+                            @if (QuestionOptions.Count > 2)
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-danger ms-2" @onclick="RemoveOption">
+                                    <i class="fas fa-minus me-1"></i>ลบตัวเลือก
+                                </button>
+                            }
+                        </div>
+                    }
+                    else if (CurrentQuestion.Type == QuestionType.TrueFalse)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">คำตอบที่ถูกต้อง *</label>
+                            <div class="form-check">
+                                <input type="radio" class="form-check-input" name="tfAnswer" value="True" 
+                                       @onchange="OnTrueFalseChanged"
+                                       checked="@(CurrentQuestion.CorrectAnswer == "True")" />
+                                <label class="form-check-label">ถูก (True)</label>
+                            </div>
+                            <div class="form-check">
+                                <input type="radio" class="form-check-input" name="tfAnswer" value="False"
+                                       @onchange="OnTrueFalseChanged"
+                                       checked="@(CurrentQuestion.CorrectAnswer == "False")" />
+                                <label class="form-check-label">ผิด (False)</label>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">คำตอบที่ถูกต้อง *</label>
+                            <InputText class="form-control" @bind-Value="CurrentQuestion.CorrectAnswer" placeholder="คำตอบที่ถูกต้อง" />
+                            <ValidationMessage For="@(() => CurrentQuestion.CorrectAnswer)" />
+                        </div>
+                    }
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="HideQuestionModal">ยกเลิก</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>@(IsEditingQuestion ? "บันทึกการแก้ไข" : "เพิ่มคำถาม")
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success/Error Messages -->
+@if (!string.IsNullOrEmpty(SuccessMessage))
+{
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div class="toast show" role="alert">
+            <div class="toast-header bg-success text-white">
+                <i class="fas fa-check-circle me-2"></i>
+                <strong class="me-auto">สำเร็จ</strong>
+                <button type="button" class="btn-close btn-close-white" @onclick="@(() => SuccessMessage = string.Empty)"></button>
+            </div>
+            <div class="toast-body">
+                @SuccessMessage
+            </div>
+        </div>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div class="toast show" role="alert">
+            <div class="toast-header bg-danger text-white">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong class="me-auto">ข้อผิดพลาด</strong>
+                <button type="button" class="btn-close btn-close-white" @onclick="@(() => ErrorMessage = string.Empty)"></button>
+            </div>
+            <div class="toast-body">
+                @ErrorMessage
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    // Properties
+    private List<Subject> Subjects = new();
+    private List<Teacher> Teachers = new();
+    private List<Exam> SubjectExams = new();
+    private User? CurrentUser;
+    private bool IsAuthorized => CurrentUser?.Role == UserRole.Admin || CurrentUser?.Role == UserRole.Teacher;
+
+    // Filter options for PaginatedTable
+    private List<PaginatedTable<Subject>.FilterOption> subjectFilterOptions = new();
+
+    // Modal States
+    private bool IsEditingSubject = false;
+    private bool IsEditingExam = false;
+    private bool IsEditingQuestion = false;
+
+    // Current Models
+    private Subject CurrentSubject = new();
+    private Exam CurrentExam = new();
+    private Question CurrentQuestion = new();
+
+    // View States
+    private Subject? ViewingExamsForSubject = null;
+    private Exam? ViewingQuestionsForExam = null;
+
+    // Form Helpers
+    private DateTime ExamStartDate = DateTime.Now.Date.AddDays(1);
+    private DateTime ExamEndDate = DateTime.Now.Date.AddDays(7);
+    private TimeSpan ExamStartTime = new TimeSpan(9, 0, 0);
+    private TimeSpan ExamEndTime = new TimeSpan(12, 0, 0);
+    private TimeOnly ExamStartTimeOnly = new TimeOnly(9, 0, 0);
+    private TimeOnly ExamEndTimeOnly = new TimeOnly(12, 0, 0);
+    private List<string> QuestionOptions = new() { "", "", "", "" };
+
+    // Messages
+    private string SuccessMessage = string.Empty;
+    private string ErrorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CurrentUser = AuthService.CurrentUser;
+        if (!IsAuthorized)
+        {
+            return;
+        }
+
+        LoadData();
+        SetupFilterOptions();
+    }
+
+    private void LoadData()
+    {
+        Subjects = DataService.GetAllSubjects();
+        Teachers = DataService.GetUsersByRole(UserRole.Teacher).Cast<Teacher>().ToList();
+
+        // If current user is teacher, filter to show only their subjects
+        if (CurrentUser?.Role == UserRole.Teacher)
+        {
+            var teacherId = CurrentUser.Id;
+            Subjects = Subjects.Where(s => s.TeacherId == teacherId).ToList();
+        }
+    }
+
+    private void SetupFilterOptions()
+    {
+        subjectFilterOptions = new List<PaginatedTable<Subject>.FilterOption>
+        {
+            new() { Value = "active", Text = "ใช้งาน" },
+            new() { Value = "inactive", Text = "ไม่ใช้งาน" },
+            new() { Value = "has_exams", Text = "มีข้อสอบ" },
+            new() { Value = "no_exams", Text = "ยังไม่มีข้อสอบ" }
+        };
+
+        // Add teacher filter options for admin
+        if (CurrentUser?.Role == UserRole.Admin)
+        {
+            foreach (var teacher in Teachers)
+            {
+                subjectFilterOptions.Add(new() { Value = $"teacher_{teacher.Id}", Text = $"อาจารย์: {teacher.FullName}" });
+            }
+        }
+    }
+
+    private bool SubjectSearchFilter(Subject subject, string searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return true;
+
+        var term = searchTerm.ToLower();
+        return subject.Name.ToLower().Contains(term) ||
+               subject.Code.ToLower().Contains(term) ||
+               subject.Description.ToLower().Contains(term) ||
+               GetTeacherName(subject.TeacherId).ToLower().Contains(term);
+    }
+
+    private bool SubjectItemFilter(Subject subject, string filterValue)
+    {
+        return filterValue switch
+        {
+            "active" => subject.IsActive,
+            "inactive" => !subject.IsActive,
+            "has_exams" => subject.ExamIds.Any(),
+            "no_exams" => !subject.ExamIds.Any(),
+            _ when filterValue.StartsWith("teacher_") => 
+                int.TryParse(filterValue.Replace("teacher_", ""), out int teacherId) && subject.TeacherId == teacherId,
+            _ => true
+        };
+    }
+
+    private async Task OnPaginationChanged(PaginationModel pagination)
+    {
+        // Handle pagination change if needed
+        await Task.CompletedTask;
+    }
+
+    private string GetTeacherName(int teacherId)
+    {
+        return Teachers.FirstOrDefault(t => t.Id == teacherId)?.FullName ?? "ไม่ระบุ";
+    }
+
+    private bool CanEditSubject(int subjectTeacherId)
+    {
+        return CurrentUser?.Role == UserRole.Admin || 
+               (CurrentUser?.Role == UserRole.Teacher && CurrentUser.Id == subjectTeacherId);
+    }
+
+    private string GetQuestionTypeText(QuestionType type)
+    {
+        return type switch
+        {
+            QuestionType.MultipleChoice => "เลือกตอบ",
+            QuestionType.TrueFalse => "ถูก/ผิด",
+            QuestionType.ShortAnswer => "คำตอบสั้น",
+            _ => "ไม่ระบุ"
+        };
+    }
+
+    // Subject Methods
+    private async Task ShowAddSubjectModal()
+    {
+        IsEditingSubject = false;
+        CurrentSubject = new Subject();
+        await ModalService.ShowAsync("subjectModal");
+    }
+
+    private async Task ShowEditSubjectModal(Subject subject)
+    {
+        IsEditingSubject = true;
+        CurrentSubject = new Subject
+        {
+            Id = subject.Id,
+            Code = subject.Code,
+            Name = subject.Name,
+            Description = subject.Description,
+            TeacherId = subject.TeacherId,
+            IsActive = subject.IsActive,
+            CreatedDate = subject.CreatedDate,
+            ExamIds = new List<int>(subject.ExamIds)
+        };
+        await ModalService.ShowAsync("subjectModal");
+    }
+
+    private async Task HideSubjectModal()
+    {
+        await ModalService.HideAsync("subjectModal");
+        CurrentSubject = new Subject();
+    }
+
+    private async Task SaveSubject()
+    {
+        try
+        {
+            if (CurrentSubject.TeacherId == 0)
+            {
+                ErrorMessage = "กรุณาเลือกอาจารย์ผู้สอน";
+                return;
+            }
+
+            if (IsEditingSubject)
+            {
+                DataService.UpdateSubject(CurrentSubject);
+                SuccessMessage = "แก้ไขข้อมูลวิชาสำเร็จ";
+            }
+            else
+            {
+                DataService.AddSubject(CurrentSubject);
+                SuccessMessage = "เพิ่มวิชาใหม่สำเร็จ";
+            }
+
+            LoadData();
+            await HideSubjectModal();
+            await Task.Delay(3000);
+            SuccessMessage = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"เกิดข้อผิดพลาด: {ex.Message}";
+            await Task.Delay(5000);
+            ErrorMessage = string.Empty;
+        }
+    }
+
+    private async Task DeleteSubject(int subjectId)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "คุณต้องการลบวิชานี้หรือไม่?"))
+        {
+            try
+            {
+                // Delete related exams first
+                var exams = DataService.GetExamsBySubject(subjectId);
+                foreach (var exam in exams)
+                {
+                    DataService.DeleteExam(exam.Id);
+                }
+
+                DataService.DeleteSubject(subjectId);
+                SuccessMessage = "ลบวิชาสำเร็จ";
+                LoadData();
+                LoadData();
+                await Task.Delay(3000);
+                SuccessMessage = string.Empty;
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = $"เกิดข้อผิดพลาด: {ex.Message}";
+                await Task.Delay(5000);
+                ErrorMessage = string.Empty;
+            }
+        }
+    }
+
+    // Exam Methods
+    private void ViewExams(int subjectId)
+    {
+        ViewingExamsForSubject = Subjects.FirstOrDefault(s => s.Id == subjectId);
+        if (ViewingExamsForSubject != null)
+        {
+            SubjectExams = DataService.GetExamsBySubject(subjectId);
+        }
+        ViewingQuestionsForExam = null; // Hide questions when viewing exams
+    }
+
+    private void HideExams()
+    {
+        ViewingExamsForSubject = null;
+        ViewingQuestionsForExam = null;
+        SubjectExams.Clear();
+    }
+
+    private async Task ShowAddExamModal()
+    {
+        IsEditingExam = false;
+        CurrentExam = new Exam 
+        { 
+            SubjectId = ViewingExamsForSubject?.Id ?? 0,
+            StartDate = ExamStartDate.Add(ExamStartTime),
+            EndDate = ExamEndDate.Add(ExamEndTime)
+        };
+        ExamStartDate = DateTime.Now.Date.AddDays(1);
+        ExamEndDate = DateTime.Now.Date.AddDays(7);
+        ExamStartTime = new TimeSpan(9, 0, 0);
+        ExamEndTime = new TimeSpan(12, 0, 0);
+        ExamStartTimeOnly = new TimeOnly(9, 0, 0);
+        ExamEndTimeOnly = new TimeOnly(12, 0, 0);
+        await ModalService.ShowAsync("examModal");
+    }
+
+    private async Task ShowEditExamModal(Exam exam)
+    {
+        IsEditingExam = true;
+        CurrentExam = new Exam
+        {
+            Id = exam.Id,
+            Title = exam.Title,
+            Description = exam.Description,
+            SubjectId = exam.SubjectId,
+            StartDate = exam.StartDate,
+            EndDate = exam.EndDate,
+            Duration = exam.Duration,
+            TotalPoints = exam.TotalPoints,
+            IsActive = exam.IsActive,
+            CreatedDate = exam.CreatedDate,
+            Questions = new List<Question>(exam.Questions)
+        };
+        ExamStartDate = exam.StartDate.Date;
+        ExamEndDate = exam.EndDate.Date;
+        ExamStartTime = exam.StartDate.TimeOfDay;
+        ExamEndTime = exam.EndDate.TimeOfDay;
+        ExamStartTimeOnly = TimeOnly.FromTimeSpan(exam.StartDate.TimeOfDay);
+        ExamEndTimeOnly = TimeOnly.FromTimeSpan(exam.EndDate.TimeOfDay);
+        await ModalService.ShowAsync("examModal");
+    }
+
+    private async Task HideExamModal()
+    {
+        await ModalService.HideAsync("examModal");
+        CurrentExam = new Exam();
+    }
+
+    private async Task SaveExam()
+    {
+        try
+        {
+            // Combine date and time
+            CurrentExam.StartDate = ExamStartDate.Add(ExamStartTimeOnly.ToTimeSpan());
+            CurrentExam.EndDate = ExamEndDate.Add(ExamEndTimeOnly.ToTimeSpan());
+
+            if (CurrentExam.StartDate >= CurrentExam.EndDate)
+            {
+                ErrorMessage = "วันที่เปิดสอบต้องมาก่อนวันที่ปิดสอบ";
+                return;
+            }
+
+            // Calculate total points from questions
+            CurrentExam.TotalPoints = CurrentExam.Questions.Sum(q => q.Points);
+
+            if (IsEditingExam)
+            {
+                DataService.UpdateExam(CurrentExam);
+                SuccessMessage = "แก้ไขข้อสอบสำเร็จ";
+            }
+            else
+            {
+                DataService.AddExam(CurrentExam);
+                SuccessMessage = "เพิ่มข้อสอบใหม่สำเร็จ";
+            }
+
+            // Update subject's exam IDs
+            if (ViewingExamsForSubject != null)
+            {
+                SubjectExams = DataService.GetExamsBySubject(ViewingExamsForSubject.Id);
+                ViewingExamsForSubject.ExamIds = SubjectExams.Select(e => e.Id).ToList();
+                DataService.UpdateSubject(ViewingExamsForSubject);
+            }
+
+            LoadData();
+            await HideExamModal();
+            await Task.Delay(3000);
+            SuccessMessage = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"เกิดข้อผิดพลาด: {ex.Message}";
+            await Task.Delay(5000);
+            ErrorMessage = string.Empty;
+        }
+    }
+
+    private async Task DeleteExam(int examId)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "คุณต้องการลบข้อสอบนี้หรือไม่?"))
+        {
+            try
+            {
+                DataService.DeleteExam(examId);
+                SuccessMessage = "ลบข้อสอบสำเร็จ";
+                
+                if (ViewingExamsForSubject != null)
+                {
+                    SubjectExams = DataService.GetExamsBySubject(ViewingExamsForSubject.Id);
+                }
+                
+                await Task.Delay(3000);
+                SuccessMessage = string.Empty;
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = $"เกิดข้อผิดพลาด: {ex.Message}";
+                await Task.Delay(5000);
+                ErrorMessage = string.Empty;
+            }
+        }
+    }
+
+    // Question Methods
+    private void ViewQuestions(Exam exam)
+    {
+        ViewingQuestionsForExam = exam;
+    }
+
+    private void HideQuestions()
+    {
+        ViewingQuestionsForExam = null;
+    }
+
+    private async Task ShowAddQuestionModal()
+    {
+        IsEditingQuestion = false;
+        CurrentQuestion = new Question { Type = QuestionType.MultipleChoice, Points = 10 };
+        QuestionOptions = new List<string> { "", "", "", "" };
+        await ModalService.ShowAsync("questionModal");
+    }
+
+    private async Task ShowEditQuestionModal(Question question)
+    {
+        IsEditingQuestion = true;
+        CurrentQuestion = new Question
+        {
+            Id = question.Id,
+            Text = question.Text,
+            Type = question.Type,
+            CorrectAnswer = question.CorrectAnswer,
+            Points = question.Points,
+            Options = new List<string>(question.Options)
+        };
+        
+        if (question.Type == QuestionType.MultipleChoice)
+        {
+            QuestionOptions = new List<string>(question.Options);
+            while (QuestionOptions.Count < 4)
+            {
+                QuestionOptions.Add("");
+            }
+        }
+        else
+        {
+            QuestionOptions = new List<string> { "", "", "", "" };
+        }
+        
+        await ModalService.ShowAsync("questionModal");
+    }
+
+    private async Task HideQuestionModal()
+    {
+        await ModalService.HideAsync("questionModal");
+        CurrentQuestion = new Question();
+        QuestionOptions.Clear();
+    }
+
+    private void OnQuestionTypeChanged(ChangeEventArgs e)
+    {
+        if (Enum.TryParse<QuestionType>(e.Value?.ToString(), out var type))
+        {
+            CurrentQuestion.Type = type;
+            CurrentQuestion.CorrectAnswer = string.Empty;
+            CurrentQuestion.Options.Clear();
+            
+            if (type == QuestionType.MultipleChoice)
+            {
+                QuestionOptions = new List<string> { "", "", "", "" };
+            }
+        }
+    }
+
+    private void AddOption()
+    {
+        if (QuestionOptions.Count < 6) // Maximum 6 options
+        {
+            QuestionOptions.Add("");
+        }
+    }
+
+    private void RemoveOption()
+    {
+        if (QuestionOptions.Count > 2) // Minimum 2 options
+        {
+            QuestionOptions.RemoveAt(QuestionOptions.Count - 1);
+        }
+    }
+
+    private void SetCorrectAnswer(string answer)
+    {
+        CurrentQuestion.CorrectAnswer = answer;
+    }
+
+    private void OnTrueFalseChanged(ChangeEventArgs e)
+    {
+        CurrentQuestion.CorrectAnswer = e.Value?.ToString() ?? "";
+    }
+
+    private async Task SaveQuestion()
+    {
+        try
+        {
+            if (ViewingQuestionsForExam == null)
+            {
+                ErrorMessage = "ไม่พบข้อสอบที่จะเพิ่มคำถาม";
+                return;
+            }
+
+            if (CurrentQuestion.Type == QuestionType.MultipleChoice)
+            {
+                // Filter out empty options
+                var validOptions = QuestionOptions.Where(o => !string.IsNullOrWhiteSpace(o)).ToList();
+                if (validOptions.Count < 2)
+                {
+                    ErrorMessage = "กรุณาใส่ตัวเลือกอย่างน้อย 2 ตัวเลือก";
+                    return;
+                }
+                
+                CurrentQuestion.Options = validOptions;
+                
+                if (string.IsNullOrEmpty(CurrentQuestion.CorrectAnswer))
+                {
+                    ErrorMessage = "กรุณาเลือกคำตอบที่ถูกต้อง";
+                    return;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(CurrentQuestion.CorrectAnswer))
+            {
+                ErrorMessage = "กรุณาระบุคำตอบที่ถูกต้อง";
+                return;
+            }
+
+            if (IsEditingQuestion)
+            {
+                // Find and update question in exam
+                var questionIndex = ViewingQuestionsForExam.Questions.FindIndex(q => q.Id == CurrentQuestion.Id);
+                if (questionIndex >= 0)
+                {
+                    ViewingQuestionsForExam.Questions[questionIndex] = CurrentQuestion;
+                }
+            }
+            else
+            {
+                // Add new question
+                CurrentQuestion.Id = ViewingQuestionsForExam.Questions.Any() 
+                    ? ViewingQuestionsForExam.Questions.Max(q => q.Id) + 1 
+                    : 1;
+                ViewingQuestionsForExam.Questions.Add(CurrentQuestion);
+            }
+
+            // Update total points
+            ViewingQuestionsForExam.TotalPoints = ViewingQuestionsForExam.Questions.Sum(q => q.Points);
+
+            // Update exam in database
+            DataService.UpdateExam(ViewingQuestionsForExam);
+
+            SuccessMessage = IsEditingQuestion ? "แก้ไขคำถามสำเร็จ" : "เพิ่มคำถามใหม่สำเร็จ";
+            await HideQuestionModal();
+            
+            await Task.Delay(3000);
+            SuccessMessage = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"เกิดข้อผิดพลาด: {ex.Message}";
+            await Task.Delay(5000);
+            ErrorMessage = string.Empty;
+        }
+    }
+
+    private async Task DeleteQuestion(int questionId)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "คุณต้องการลบคำถามนี้หรือไม่?"))
+        {
+            try
+            {
+                if (ViewingQuestionsForExam != null)
+                {
+                    ViewingQuestionsForExam.Questions.RemoveAll(q => q.Id == questionId);
+                    ViewingQuestionsForExam.TotalPoints = ViewingQuestionsForExam.Questions.Sum(q => q.Points);
+                    DataService.UpdateExam(ViewingQuestionsForExam);
+                    SuccessMessage = "ลบคำถามสำเร็จ";
+                    
+                    await Task.Delay(3000);
+                    SuccessMessage = string.Empty;
+                }
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = $"เกิดข้อผิดพลาด: {ex.Message}";
+                await Task.Delay(5000);
+                ErrorMessage = string.Empty;
+            }
+        }
+    }
+}

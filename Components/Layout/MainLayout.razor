@@ -1,0 +1,70 @@
+﻿@inherits LayoutComponentBase
+@using PISA_APP.Services
+@inject AuthenticationService AuthService
+
+@if (AuthService.IsAuthenticated)
+{
+    <div class="page">
+        <div class="sidebar">
+            <NavMenu />
+        </div>
+
+        <main>
+            <div class="top-row px-4 d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted">ระบบข้อสอบออนไลน์ PISA</span>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="text-muted">
+                        <i class="fas fa-user me-1"></i>
+                        @AuthService.CurrentUser?.FullName
+                    </span>
+                    <span class="badge bg-primary">@AuthService.CurrentUser?.Role.ToString()</span>
+                    <button class="btn btn-outline-danger btn-sm" @onclick="HandleLogout">
+                        <i class="fas fa-sign-out-alt me-1"></i>
+                        ออกจากระบบ
+                    </button>
+                </div>
+            </div>
+
+            <article class="content px-4">
+                @Body
+            </article>
+        </main>
+    </div>
+}
+else
+{
+    <div class="page">
+        <main class="w-100">
+            <article class="content px-4">
+                @Body
+            </article>
+        </main>
+    </div>
+}
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>
+
+@code {
+    @inject NavigationManager Navigation
+
+    private async Task HandleLogout()
+    {
+        try
+        {
+            await AuthService.LogoutAsync();
+            Navigation.NavigateTo("/login", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Logout error: {ex.Message}");
+            // Force navigation anyway
+            Navigation.NavigateTo("/login", forceLoad: true);
+        }
+    }
+}

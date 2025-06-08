@@ -1,0 +1,33 @@
+@page "/404"
+
+<PageTitle>ไม่พบหน้าที่ต้องการ - PISA</PageTitle>
+
+<div class="min-vh-100 d-flex align-items-center justify-content-center">
+    <div class="text-center">
+        <div class="mb-4">
+            <h1 class="display-1 text-primary">404</h1>
+            <h2 class="mb-3">ไม่พบหน้าที่คุณต้องการ</h2>
+            <p class="text-muted mb-4">
+                ขออภัย หน้าที่คุณกำลังค้นหาไม่มีอยู่ในระบบ<br>
+                กรุณาตรวจสอบ URL หรือกลับไปยังหน้าหลัก
+            </p>
+        </div>
+        
+        <div class="d-flex gap-3 justify-content-center">
+            <a href="/dashboard" class="btn btn-primary">
+                <i class="fas fa-home me-2"></i>
+                กลับสู่หน้าหลัก
+            </a>
+            <button onclick="history.back()" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>
+                กลับไปหน้าก่อนหน้า
+            </button>
+        </div>
+        
+        <div class="mt-4">
+            <small class="text-muted">
+                หากคุณคิดว่านี่เป็นข้อผิดพลาด กรุณาติดต่อผู้ดูแลระบบ
+            </small>
+        </div>
+    </div>
+</div>

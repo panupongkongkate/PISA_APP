@@ -1,0 +1,149 @@
+﻿@using PISA_APP.Services
+@using PISA_APP.Models
+@inject AuthenticationService AuthService
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/dashboard">
+            <i class="fas fa-graduation-cap me-2"></i>
+            PISA System
+        </a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+        <!-- Dashboard -->
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/dashboard" Match="NavLinkMatch.All">
+                <i class="fas fa-tachometer-alt me-2"></i> หน้าหลัก
+            </NavLink>
+        </div>
+
+        @if (AuthService.IsAdmin())
+        {
+            <!-- User Management Section -->
+            <div class="nav-item px-3 mt-3">
+                <span class="nav-section-header text-uppercase small text-muted">จัดการผู้ใช้</span>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/manage-roles">
+                    <i class="fas fa-key me-2"></i> จัดการสิทธิการใช้งาน
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/manage-admins">
+                    <i class="fas fa-user-shield me-2"></i> จัดการผู้ดูแลระบบ
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/manage-teachers">
+                    <i class="fas fa-chalkboard-teacher me-2"></i> จัดการครู/อาจารย์
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/manage-students">
+                    <i class="fas fa-user-graduate me-2"></i> จัดการนักศึกษา
+                </NavLink>
+            </div>
+
+            <!-- Content Management Section -->
+            <div class="nav-item px-3 mt-3">
+                <span class="nav-section-header text-uppercase small text-muted">จัดการเนื้อหา</span>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/manage-subjects">
+                    <i class="fas fa-book me-2"></i> จัดการวิชา/ข้อสอบ
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/exam-participants">
+                    <i class="fas fa-users me-2"></i> รายชื่อผู้สอบ
+                </NavLink>
+            </div>
+
+            <!-- Reports Section -->
+            <div class="nav-item px-3 mt-3">
+                <span class="nav-section-header text-uppercase small text-muted">รายงาน</span>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/reports">
+                    <i class="fas fa-chart-bar me-2"></i> Dashboard รายงาน
+                </NavLink>
+            </div>
+
+            <!-- Documentation Section -->
+            <div class="nav-item px-3 mt-3">
+                <span class="nav-section-header text-uppercase small text-muted">เอกสาร</span>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/documentation">
+                    <i class="fas fa-book me-2"></i> เอกสารประกอบระบบ
+                </NavLink>
+            </div>
+        }
+        else if (AuthService.IsTeacher())
+        {
+            <!-- Teacher Content Management -->
+            <div class="nav-item px-3 mt-3">
+                <span class="nav-section-header text-uppercase small text-muted">การสอน</span>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/manage-subjects">
+                    <i class="fas fa-book me-2"></i> จัดการวิชา/ข้อสอบ
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/exam-participants">
+                    <i class="fas fa-users me-2"></i> รายชื่อผู้สอบ
+                </NavLink>
+            </div>
+        }
+        else if (AuthService.IsStudent())
+        {
+            <!-- Student Features -->
+            <div class="nav-item px-3 mt-3">
+                <span class="nav-section-header text-uppercase small text-muted">การเรียน</span>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/subjects">
+                    <i class="fas fa-book me-2"></i> รายวิชา/เข้าสอบ
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/exam-results">
+                    <i class="fas fa-chart-line me-2"></i> ผลการสอบ
+                </NavLink>
+            </div>
+        }
+
+        <!-- Profile & Settings Section -->
+        <div class="nav-item px-3 mt-3">
+            <span class="nav-section-header text-uppercase small text-muted">ตั้งค่า</span>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/change-password">
+                <i class="fas fa-lock me-2"></i> แก้ไขรหัสผ่าน
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/profile">
+                <i class="fas fa-user me-2"></i> แก้ไขโปรไฟล์
+            </NavLink>
+        </div>
+    </nav>
+</div>
+
+<style>
+.nav-section-header {
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+    display: block;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+</style>
+

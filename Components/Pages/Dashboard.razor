@@ -1,0 +1,340 @@
+@page "/"
+@page "/dashboard"
+@using PISA_APP.Services
+@using PISA_APP.Models
+@inject AuthenticationService AuthService
+@inject MockDataService DataService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>หน้าหลัก - PISA</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    <div class="d-flex justify-content-center align-items-center min-vh-100">
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">กำลังตรวจสอบ...</span>
+            </div>
+            <p class="mt-2">กำลังตรวจสอบการเข้าสู่ระบบ...</p>
+        </div>
+    </div>
+    return;
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3">หน้าหลัก Dashboard</h1>
+                    <p class="text-muted">ยินดีต้อนรับ, @AuthService.CurrentUser?.FullName</p>
+                </div>
+                <div>
+                    <span class="badge bg-primary">@AuthService.CurrentUser?.Role.ToString()</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        @if (AuthService.IsAdmin())
+        {
+            <div class="col-md-3 mb-3">
+                <div class="card text-white bg-primary">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title">@totalStudents</h4>
+                                <p class="card-text">นักศึกษาทั้งหมด</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-users fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 mb-3">
+                <div class="card text-white bg-success">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title">@totalTeachers</h4>
+                                <p class="card-text">อาจารย์ทั้งหมด</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-chalkboard-teacher fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 mb-3">
+                <div class="card text-white bg-info">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title">@totalSubjects</h4>
+                                <p class="card-text">วิชาทั้งหมด</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-book fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 mb-3">
+                <div class="card text-white bg-warning">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title">@totalExams</h4>
+                                <p class="card-text">ข้อสอบทั้งหมด</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-file-alt fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+        else if (AuthService.IsStudent())
+        {
+            <div class="col-md-4 mb-3">
+                <div class="card text-white bg-primary">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title">@studentSubjects</h4>
+                                <p class="card-text">วิชาที่ลงทะเบียน</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-book fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-3">
+                <div class="card text-white bg-success">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title">@studentCompletedExams</h4>
+                                <p class="card-text">ข้อสอบที่สอบแล้ว</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-check-circle fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-3">
+                <div class="card text-white bg-info">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title">@averageScore.ToString("F1")</h4>
+                                <p class="card-text">คะแนนเฉลี่ย (%)</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-chart-line fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="row">
+        <!-- Recent Activities -->
+        <div class="col-md-8 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        @if (AuthService.IsStudent())
+                        {
+                            <span>ผลการสอบล่าสุด</span>
+                        }
+                        else
+                        {
+                            <span>กิจกรรมล่าสุด</span>
+                        }
+                    </h5>
+                </div>
+                <div class="card-body">
+                    @if (AuthService.IsStudent())
+                    {
+                        @if (recentResults.Any())
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>ข้อสอบ</th>
+                                            <th>วิชา</th>
+                                            <th>คะแนน</th>
+                                            <th>เปอร์เซ็นต์</th>
+                                            <th>วันที่สอบ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var result in recentResults.Take(5))
+                                        {
+                                            var exam = DataService.GetExamById(result.ExamId);
+                                            var subject = exam != null ? DataService.GetSubjectById(exam.SubjectId) : null;
+                                            <tr>
+                                                <td>@exam?.Title</td>
+                                                <td>@subject?.Name</td>
+                                                <td>@result.Score/@result.TotalPoints</td>
+                                                <td>
+                                                    <span class="badge @(result.Percentage >= 80 ? "bg-success" : result.Percentage >= 60 ? "bg-warning" : "bg-danger")">
+                                                        @result.Percentage.ToString("F1")%
+                                                    </span>
+                                                </td>
+                                                <td>@result.EndTime?.ToString("dd/MM/yyyy HH:mm")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted">ยังไม่มีผลการสอบ</p>
+                        }
+                    }
+                    else
+                    {
+                        <div class="list-group">
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">ระบบเริ่มต้นใช้งาน</h6>
+                                    <small>@DateTime.Now.ToString("dd/MM/yyyy")</small>
+                                </div>
+                                <p class="mb-1">ระบบข้อสอบออนไลน์พร้อมใช้งาน</p>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">เมนูด่วน</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        @if (AuthService.IsAdmin())
+                        {
+                            <a href="/manage-users" class="btn btn-outline-primary">
+                                <i class="fas fa-users me-2"></i>จัดการผู้ใช้
+                            </a>
+                            <a href="/manage-subjects" class="btn btn-outline-success">
+                                <i class="fas fa-book me-2"></i>จัดการวิชา
+                            </a>
+                            <a href="/reports" class="btn btn-outline-info">
+                                <i class="fas fa-chart-bar me-2"></i>รายงาน
+                            </a>
+                        }
+                        else if (AuthService.IsTeacher())
+                        {
+                            <a href="/manage-subjects" class="btn btn-outline-primary">
+                                <i class="fas fa-book me-2"></i>วิชาที่สอน
+                            </a>
+                            <a href="/exam-results" class="btn btn-outline-success">
+                                <i class="fas fa-chart-line me-2"></i>ผลการสอบ
+                            </a>
+                        }
+                        else if (AuthService.IsStudent())
+                        {
+                            <a href="/subjects" class="btn btn-outline-primary">
+                                <i class="fas fa-book me-2"></i>รายวิชา
+                            </a>
+                            <a href="/exam-results" class="btn btn-outline-success">
+                                <i class="fas fa-chart-line me-2"></i>ผลการสอบ
+                            </a>
+                        }
+                        
+                        <a href="/profile" class="btn btn-outline-secondary">
+                            <i class="fas fa-user me-2"></i>แก้ไขโปรไฟล์
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private int totalStudents = 0;
+    private int totalTeachers = 0;
+    private int totalSubjects = 0;
+    private int totalExams = 0;
+    
+    private int studentSubjects = 0;
+    private int studentCompletedExams = 0;
+    private double averageScore = 0;
+    
+    private List<ExamResult> recentResults = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        LoadDashboardData();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !AuthService.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+        }
+    }
+
+    private void LoadDashboardData()
+    {
+        if (!AuthService.IsAuthenticated)
+        {
+            return;
+        }
+
+        if (AuthService.IsAdmin())
+        {
+            totalStudents = DataService.GetUsersByRole(UserRole.Student).Count;
+            totalTeachers = DataService.GetUsersByRole(UserRole.Teacher).Count;
+            totalSubjects = DataService.GetAllSubjects().Count;
+            totalExams = DataService.GetAllExams().Count;
+        }
+        else if (AuthService.IsStudent() && AuthService.CurrentUser is PISA_APP.Models.Student student)
+        {
+            studentSubjects = student.EnrolledSubjectIds.Count;
+            
+            var studentResults = DataService.GetExamResultsByStudent(student.Id);
+            studentCompletedExams = studentResults.Where(r => r.IsCompleted).Count();
+            
+            if (studentResults.Any())
+            {
+                averageScore = studentResults.Where(r => r.IsCompleted).Average(r => r.Percentage);
+            }
+            
+            recentResults = studentResults
+                .Where(r => r.IsCompleted)
+                .OrderByDescending(r => r.EndTime)
+                .ToList();
+        }
+    }
+}

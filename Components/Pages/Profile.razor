@@ -1,0 +1,429 @@
+@page "/profile"
+@inject AuthenticationService AuthService
+@inject MockDataService DataService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>โปรไฟล์ - PISA</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    Navigation.NavigateTo("/login");
+    return;
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3">
+                        <i class="fas fa-user me-2"></i>
+                        โปรไฟล์ของฉัน
+                    </h1>
+                    <p class="text-muted">แก้ไขข้อมูลส่วนตัวของคุณ</p>
+                </div>
+                <div>
+                    <a href="/change-password" class="btn btn-outline-primary">
+                        <i class="fas fa-lock me-2"></i>
+                        เปลี่ยนรหัสผ่าน
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Profile Information -->
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-edit me-2"></i>
+                        แก้ไขข้อมูลส่วนตัว
+                    </h5>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            @errorMessage
+                            <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty"></button>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(successMessage))
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle me-2"></i>
+                            @successMessage
+                            <button type="button" class="btn-close" @onclick="() => successMessage = string.Empty"></button>
+                        </div>
+                    }
+
+                    <EditForm Model="@profileModel" OnValidSubmit="@HandleUpdateProfile">
+                        <DataAnnotationsValidator />
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="fullName" class="form-label">
+                                    <i class="fas fa-user me-1"></i>
+                                    ชื่อ-นามสกุล <span class="text-danger">*</span>
+                                </label>
+                                <InputText @bind-Value="profileModel.FullName" class="form-control" id="fullName" placeholder="กรอกชื่อ-นามสกุล" />
+                                <ValidationMessage For="@(() => profileModel.FullName)" />
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="username" class="form-label">
+                                    <i class="fas fa-at me-1"></i>
+                                    ชื่อผู้ใช้
+                                </label>
+                                <input type="text" class="form-control" id="username" value="@profileModel.Username" readonly />
+                                <div class="form-text">
+                                    <small class="text-muted">
+                                        <i class="fas fa-lock me-1"></i>
+                                        ไม่สามารถเปลี่ยนชื่อผู้ใช้ได้
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">
+                                    <i class="fas fa-envelope me-1"></i>
+                                    อีเมล <span class="text-danger">*</span>
+                                </label>
+                                <InputText @bind-Value="profileModel.Email" type="email" class="form-control" id="email" placeholder="กรอกอีเมล" />
+                                <ValidationMessage For="@(() => profileModel.Email)" />
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="phoneNumber" class="form-label">
+                                    <i class="fas fa-phone me-1"></i>
+                                    เบอร์โทรศัพท์
+                                </label>
+                                <InputText @bind-Value="profileModel.PhoneNumber" class="form-control" id="phoneNumber" placeholder="กรอกเบอร์โทรศัพท์" />
+                                <ValidationMessage For="@(() => profileModel.PhoneNumber)" />
+                            </div>
+                        </div>
+
+                        <!-- Role-specific fields -->
+                        @if (AuthService.IsStudent() && AuthService.CurrentUser is PISA_APP.Models.Student student)
+                        {
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="studentId" class="form-label">
+                                        <i class="fas fa-id-card me-1"></i>
+                                        รหัสนักศึกษา
+                                    </label>
+                                    <input type="text" class="form-control" id="studentId" value="@student.StudentId" readonly />
+                                    <div class="form-text">
+                                        <small class="text-muted">
+                                            <i class="fas fa-lock me-1"></i>
+                                            ไม่สามารถเปลี่ยนรหัสนักศึกษาได้
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-book me-1"></i>
+                                        วิชาที่ลงทะเบียน
+                                    </label>
+                                    <div class="form-control" style="height: auto; min-height: 38px;">
+                                        @if (enrolledSubjects.Any())
+                                        {
+                                            @foreach (var subject in enrolledSubjects)
+                                            {
+                                                <span class="badge bg-primary me-1 mb-1">@subject.Name</span>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">ยังไม่ได้ลงทะเบียนวิชา</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        @if (AuthService.IsTeacher() && AuthService.CurrentUser is Teacher teacher)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-chalkboard-teacher me-1"></i>
+                                    วิชาที่สอน
+                                </label>
+                                <div class="form-control" style="height: auto; min-height: 38px;">
+                                    @if (assignedSubjects.Any())
+                                    {
+                                        @foreach (var subject in assignedSubjects)
+                                        {
+                                            <span class="badge bg-success me-1 mb-1">@subject.Name</span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">ยังไม่ได้รับมอบหมายวิชา</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-primary" disabled="@isLoading">
+                                @if (isLoading)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    <span>กำลังบันทึก...</span>
+                                }
+                                else
+                                {
+                                    <i class="fas fa-save me-2"></i>
+                                    <span>บันทึกการเปลี่ยนแปลง</span>
+                                }
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Summary -->
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        ข้อมูลบัญชี
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                            <i class="fas fa-user fa-2x text-muted"></i>
+                        </div>
+                    </div>
+
+                    <table class="table table-borderless table-sm">
+                        <tr>
+                            <td><i class="fas fa-user me-2 text-muted"></i><strong>ชื่อ:</strong></td>
+                            <td>@AuthService.CurrentUser?.FullName</td>
+                        </tr>
+                        <tr>
+                            <td><i class="fas fa-shield-alt me-2 text-muted"></i><strong>สิทธิ์:</strong></td>
+                            <td>
+                                <span class="badge bg-@(AuthService.CurrentUser?.Role.ToString() switch {
+                                    "Admin" => "danger",
+                                    "Teacher" => "warning",
+                                    "Student" => "primary",
+                                    _ => "secondary"
+                                })">
+                                    @(AuthService.CurrentUser?.Role.ToString() switch {
+                                        "Admin" => "ผู้ดูแลระบบ",
+                                        "Teacher" => "อาจารย์",
+                                        "Student" => "นักศึกษา",
+                                        _ => "ไม่ระบุ"
+                                    })
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><i class="fas fa-calendar me-2 text-muted"></i><strong>สมาชิกเมื่อ:</strong></td>
+                            <td>@AuthService.CurrentUser?.CreatedDate.ToString("dd/MM/yyyy")</td>
+                        </tr>
+                        <tr>
+                            <td><i class="fas fa-toggle-on me-2 text-muted"></i><strong>สถานะ:</strong></td>
+                            <td>
+                                <span class="badge bg-@(AuthService.CurrentUser?.IsActive == true ? "success" : "danger")">
+                                    @(AuthService.CurrentUser?.IsActive == true ? "ใช้งาน" : "ไม่ใช้งาน")
+                                </span>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Quick Stats for Students -->
+            @if (AuthService.IsStudent())
+            {
+                <div class="card shadow mt-4">
+                    <div class="card-header bg-success text-white">
+                        <h6 class="card-title mb-0">
+                            <i class="fas fa-chart-line me-2"></i>
+                            สถิติการเรียน
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="border-end">
+                                    <h4 class="text-primary mb-0">@totalExamsTaken</h4>
+                                    <small class="text-muted">ข้อสอบที่สอบ</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <h4 class="text-success mb-0">@averageScore.ToString("F1")%</h4>
+                                <small class="text-muted">คะแนนเฉลี่ย</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Quick Actions -->
+            <div class="card shadow mt-4">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-tools me-2"></i>
+                        การจัดการบัญชี
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="/change-password" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-lock me-2"></i>
+                            เปลี่ยนรหัสผ่าน
+                        </a>
+                        <a href="/dashboard" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-home me-2"></i>
+                            กลับหน้าหลัก
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private ProfileModel profileModel = new();
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+    private bool isLoading = false;
+
+    private List<Subject> enrolledSubjects = new();
+    private List<Subject> assignedSubjects = new();
+    private int totalExamsTaken = 0;
+    private double averageScore = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthService.IsAuthenticated || AuthService.CurrentUser == null)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        LoadProfileData();
+        LoadAdditionalData();
+    }
+
+    private void LoadProfileData()
+    {
+        var user = AuthService.CurrentUser!;
+        profileModel = new ProfileModel
+        {
+            FullName = user.FullName,
+            Username = user.Username,
+            Email = user.Email,
+            PhoneNumber = user.PhoneNumber
+        };
+    }
+
+    private void LoadAdditionalData()
+    {
+        if (AuthService.IsStudent() && AuthService.CurrentUser is PISA_APP.Models.Student student)
+        {
+            // Load enrolled subjects
+            enrolledSubjects = DataService.GetAllSubjects()
+                .Where(s => student.EnrolledSubjectIds.Contains(s.Id))
+                .ToList();
+
+            // Load exam statistics
+            var examResults = DataService.GetExamResultsByStudent(student.Id)
+                .Where(r => r.IsCompleted)
+                .ToList();
+
+            totalExamsTaken = examResults.Count;
+            if (examResults.Any())
+            {
+                averageScore = examResults.Average(r => r.Percentage);
+            }
+        }
+        else if (AuthService.IsTeacher() && AuthService.CurrentUser is Teacher teacher)
+        {
+            // Load assigned subjects
+            assignedSubjects = DataService.GetAllSubjects()
+                .Where(s => teacher.AssignedSubjectIds.Contains(s.Id))
+                .ToList();
+        }
+    }
+
+    private async Task HandleUpdateProfile()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+            successMessage = string.Empty;
+
+            if (AuthService.CurrentUser == null)
+            {
+                errorMessage = "ไม่พบข้อมูลผู้ใช้";
+                return;
+            }
+
+            // Check for duplicate email (excluding current user)
+            var existingUser = DataService.GetAllUsers()
+                .FirstOrDefault(u => u.Email.Equals(profileModel.Email, StringComparison.OrdinalIgnoreCase) && u.Id != AuthService.CurrentUser.Id);
+
+            if (existingUser != null)
+            {
+                errorMessage = "อีเมลนี้ถูกใช้งานแล้ว";
+                return;
+            }
+
+            // Update user data
+            var currentUser = AuthService.CurrentUser;
+            currentUser.FullName = profileModel.FullName;
+            currentUser.Email = profileModel.Email;
+            currentUser.PhoneNumber = profileModel.PhoneNumber;
+
+            DataService.UpdateUser(currentUser);
+
+            successMessage = "บันทึกข้อมูลเรียบร้อยแล้ว";
+
+            // Reload data
+            LoadProfileData();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "เกิดข้อผิดพลาดในการบันทึกข้อมูล";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    public class ProfileModel
+    {
+        [Required(ErrorMessage = "กรุณากรอกชื่อ-นามสกุล")]
+        [StringLength(100, ErrorMessage = "ชื่อ-นามสกุลต้องไม่เกิน 100 ตัวอักษร")]
+        public string FullName { get; set; } = string.Empty;
+
+        public string Username { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "กรุณากรอกอีเมล")]
+        [EmailAddress(ErrorMessage = "รูปแบบอีเมลไม่ถูกต้อง")]
+        public string Email { get; set; } = string.Empty;
+
+        [Phone(ErrorMessage = "รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง")]
+        public string PhoneNumber { get; set; } = string.Empty;
+    }
+}

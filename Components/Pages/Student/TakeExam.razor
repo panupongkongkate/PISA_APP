@@ -1,0 +1,916 @@
+@page "/take-exam/{ResultId:int}"
+@using PISA_APP.Models
+@using PISA_APP.Services
+@using Microsoft.AspNetCore.Components.Rendering
+@inject MockDataService DataService
+@inject AuthenticationService AuthService
+@inject ModalService ModalService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<PageTitle>ทำข้อสอบ - @(exam?.Title ?? "โหลดข้อมูล...")</PageTitle>
+
+@if (!AuthService.IsStudent())
+{
+    <div class="alert alert-danger">
+        <i class="fas fa-exclamation-triangle"></i>
+        คุณไม่มีสิทธิ์เข้าถึงหน้านี้ กรุณาเข้าสู่ระบบด้วยบัญชีนักศึกษา
+    </div>
+    return;
+}
+
+@if (loading)
+{
+    <div class="d-flex justify-content-center align-items-center" style="height: 50vh;">
+        <div class="text-center">
+            <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
+                <span class="visually-hidden">กำลังโหลด...</span>
+            </div>
+            <h5>กำลังโหลดข้อสอบ...</h5>
+            <p class="text-muted">กรุณารอสักครู่</p>
+        </div>
+    </div>
+    return;
+}
+
+@if (examResult == null || exam == null || subject == null)
+{
+    <div class="alert alert-danger">
+        <i class="fas fa-exclamation-triangle"></i>
+        ไม่พบข้อมูลการสอบ กรุณาตรวจสอบและลองใหม่อีกครั้ง
+        <div class="mt-2">
+            <button class="btn btn-primary" @onclick="GoBack">
+                <i class="fas fa-arrow-left"></i> กลับไปหน้ารายวิชา
+            </button>
+        </div>
+    </div>
+    return;
+}
+
+@if (examResult.IsCompleted)
+{
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        คุณได้สอบข้อสอบนี้เรียบร้อยแล้ว
+        <div class="mt-2">
+            <button class="btn btn-success me-2" @onclick="ViewResults">
+                <i class="fas fa-chart-bar"></i> ดูผลการสอบ
+            </button>
+            <button class="btn btn-secondary" @onclick="GoBack">
+                <i class="fas fa-arrow-left"></i> กลับไปหน้ารายวิชา
+            </button>
+        </div>
+    </div>
+    return;
+}
+
+<div class="container-fluid">
+    <!-- Header พร้อม Timer -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-primary mb-4">
+                <div class="card-header bg-primary text-white">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h5 class="mb-0">
+                                <i class="fas fa-clipboard-list"></i>
+                                @exam.Title
+                            </h5>
+                            <small>@subject.Code - @subject.Name</small>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="d-flex align-items-center justify-content-end">
+                                <div class="me-3">
+                                    <i class="fas fa-clock"></i>
+                                    <span class="fs-4 fw-bold @(timeRemaining.TotalMinutes <= 10 ? "text-warning" : "")">
+                                        @FormatTime(timeRemaining)
+                                    </span>
+                                </div>
+                                <button class="btn btn-outline-light btn-sm" @onclick="ToggleFullscreen">
+                                    <i class="fas fa-expand"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-2">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-success" style="width: @(progressPercentage)%"></div>
+                            </div>
+                            <small class="text-muted">
+                                ตอบแล้ว @answeredCount/@totalQuestions ข้อ (@progressPercentage.ToString("F1")%)
+                            </small>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-secondary" @onclick="ToggleView">
+                                    <i class="fas @(showAllQuestions ? "fa-list-ol" : "fa-eye")"></i>
+                                    @(showAllQuestions ? "ดูทีละข้อ" : "ดูทั้งหมด")
+                                </button>
+                                <button class="btn btn-warning" @onclick="SaveDraft">
+                                    <i class="fas fa-save"></i>
+                                    บันทึก
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <div class="alert @(isSuccess ? "alert-success" : "alert-danger") alert-dismissible fade show">
+            <i class="fas @(isSuccess ? "fa-check-circle" : "fa-exclamation-triangle")"></i>
+            @message
+            <button type="button" class="btn-close" @onclick="ClearMessage"></button>
+        </div>
+    }
+
+    <!-- เตือนเมื่อใกล้หมดเวลา -->
+    @if (timeRemaining.TotalMinutes <= 10 && timeRemaining.TotalMinutes > 0)
+    {
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>เตือน!</strong> เหลือเวลาสอบอีก @FormatTime(timeRemaining) กรุณาตรวจสอบคำตอบและส่งข้อสอบ
+        </div>
+    }
+
+    @if (timeRemaining.TotalSeconds <= 0)
+    {
+        <div class="alert alert-danger">
+            <i class="fas fa-times-circle"></i>
+            <strong>หมดเวลา!</strong> กำลังส่งข้อสอบอัตโนมัติ...
+        </div>
+    }
+
+    <!-- แสดงคำถาม -->
+    @if (showAllQuestions)
+    {
+        <!-- แสดงทุกข้อในหน้าเดียว -->
+        <div class="row">
+            <div class="col-lg-9">
+                @foreach (var question in exam.Questions)
+                {
+                    <div class="card mb-3 @(GetQuestionCardClass(question.Id))">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">
+                                ข้อ @(exam.Questions.IndexOf(question) + 1)
+                                <span class="badge bg-primary ms-2">@question.Points คะแนน</span>
+                            </h6>
+                            @if (studentAnswers.ContainsKey(question.Id))
+                            {
+                                <i class="fas fa-check-circle text-success"></i>
+                            }
+                            else
+                            {
+                                <i class="fas fa-circle text-muted"></i>
+                            }
+                        </div>
+                        <div class="card-body">
+                            <h6>@question.Text</h6>
+                            @RenderQuestion(question)
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="col-lg-3">
+                @RenderQuestionNavigation()
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- แสดงทีละข้อ -->
+        <div class="row">
+            <div class="col-lg-9">
+                @if (currentQuestionIndex >= 0 && currentQuestionIndex < exam.Questions.Count)
+                {
+                    var question = exam.Questions[currentQuestionIndex];
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                ข้อ @(currentQuestionIndex + 1) จาก @exam.Questions.Count
+                                <span class="badge bg-primary ms-2">@question.Points คะแนน</span>
+                            </h5>
+                            @if (studentAnswers.ContainsKey(question.Id))
+                            {
+                                <i class="fas fa-check-circle text-success" title="ตอบแล้ว"></i>
+                            }
+                            else
+                            {
+                                <i class="fas fa-circle text-muted" title="ยังไม่ตอบ"></i>
+                            }
+                        </div>
+                        <div class="card-body">
+                            <h5>@question.Text</h5>
+                            @RenderQuestion(question)
+                        </div>
+                        <div class="card-footer">
+                            <div class="row">
+                                <div class="col-6">
+                                    <button class="btn btn-outline-secondary @(currentQuestionIndex == 0 ? "disabled" : "")" 
+                                            @onclick="PreviousQuestion" disabled="@(currentQuestionIndex == 0)">
+                                        <i class="fas fa-chevron-left"></i> ข้อก่อนหน้า
+                                    </button>
+                                </div>
+                                <div class="col-6 text-end">
+                                    @if (currentQuestionIndex < exam.Questions.Count - 1)
+                                    {
+                                        <button class="btn btn-primary" @onclick="NextQuestion">
+                                            ข้อถัดไป <i class="fas fa-chevron-right"></i>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-success" @onclick="ShowSubmitConfirmation">
+                                            <i class="fas fa-paper-plane"></i> ส่งข้อสอบ
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="col-lg-3">
+                @RenderQuestionNavigation()
+            </div>
+        </div>
+    }
+
+    <!-- ปุ่มส่งข้อสอบ (สำหรับโหมดแสดงทั้งหมด) -->
+    @if (showAllQuestions)
+    {
+        <div class="row mt-4">
+            <div class="col-12 text-center">
+                <button class="btn btn-success btn-lg" @onclick="ShowSubmitConfirmation">
+                    <i class="fas fa-paper-plane"></i>
+                    ส่งข้อสอบ
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Modal ยืนยันการส่งข้อสอบ -->
+<div class="modal fade" id="submitModal" tabindex="-1" aria-labelledby="submitModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="submitModalLabel">
+                    <i class="fas fa-paper-plane"></i>
+                    ยืนยันการส่งข้อสอบ
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>คำเตือน!</strong> เมื่อส่งข้อสอบแล้วจะไม่สามารถแก้ไขได้อีก
+                </div>
+                
+                <h6>สรุปการตอบข้อสอบ:</h6>
+                <div class="row text-center mb-3">
+                    <div class="col-4">
+                        <div class="border rounded p-2">
+                            <h5 class="text-success">@answeredCount</h5>
+                            <small>ตอบแล้ว</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="border rounded p-2">
+                            <h5 class="text-danger">@(totalQuestions - answeredCount)</h5>
+                            <small>ยังไม่ตอบ</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="border rounded p-2">
+                            <h5 class="text-primary">@totalQuestions</h5>
+                            <small>ทั้งหมด</small>
+                        </div>
+                    </div>
+                </div>
+
+                @if (answeredCount < totalQuestions)
+                {
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        คุณยังตอบข้อสอบไม่ครบ ข้อที่ไม่ตอบจะได้ 0 คะแนน
+                    </div>
+                }
+
+                <p>เวลาที่ใช้ในการสอบ: <strong>@FormatTimeSpan(DateTime.Now - examResult.StartTime)</strong></p>
+                <p>คุณแน่ใจหรือไม่ที่จะส่งข้อสอบนี้?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="HideSubmitConfirmation">
+                    <i class="fas fa-times"></i>
+                    ยกเลิก
+                </button>
+                <button type="button" class="btn btn-success" @onclick="SubmitExam" disabled="@submitting">
+                    @if (submitting)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    <i class="fas fa-paper-plane"></i>
+                    ส่งข้อสอบ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int ResultId { get; set; }
+
+    private ExamResult? examResult;
+    private Exam? exam;
+    private Subject? subject;
+    private Dictionary<int, string> studentAnswers = new();
+    
+    private Timer? examTimer;
+    private TimeSpan timeRemaining;
+    private DateTime examEndTime;
+    
+    private int currentQuestionIndex = 0;
+    private bool showAllQuestions = false;
+    private bool submitting = false;
+    
+    private bool loading = true;
+    private string message = "";
+    private bool isSuccess = false;
+    
+    private int totalQuestions => exam?.Questions.Count ?? 0;
+    private int answeredCount => studentAnswers.Count;
+    private double progressPercentage => totalQuestions > 0 ? (double)answeredCount / totalQuestions * 100 : 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthService.IsStudent())
+        {
+            Navigation.NavigateTo("/unauthorized");
+            return;
+        }
+
+        await LoadExamData();
+        
+        if (examResult != null && exam != null)
+        {
+            InitializeTimer();
+            LoadExistingAnswers();
+            
+            // เริ่ม Auto-save ทุก 30 วินาที
+            _ = StartAutoSave();
+        }
+
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("initializeExamPage");
+                // ป้องกันการรีเฟรชหรือออกจากหน้า
+                await JSRuntime.InvokeVoidAsync("preventPageLeave", true);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"JavaScript initialization error: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task LoadExamData()
+    {
+        loading = true;
+        
+        try
+        {
+            var currentStudent = AuthService.CurrentUser as Student;
+            if (currentStudent == null)
+            {
+                Navigation.NavigateTo("/unauthorized");
+                return;
+            }
+
+            examResult = DataService.GetExamResultById(ResultId);
+            if (examResult == null || examResult.StudentId != currentStudent.Id)
+            {
+                ShowMessage("ไม่พบข้อมูลการสอบหรือคุณไม่มีสิทธิ์เข้าถึง", false);
+                return;
+            }
+
+            exam = DataService.GetExamById(examResult.ExamId);
+            if (exam == null)
+            {
+                ShowMessage("ไม่พบข้อมูลข้อสอบ", false);
+                return;
+            }
+
+            subject = DataService.GetSubjectById(exam.SubjectId);
+            if (subject == null)
+            {
+                ShowMessage("ไม่พบข้อมูลวิชา", false);
+                return;
+            }
+
+            // ตรวจสอบเวลาสอบ
+            var now = DateTime.Now;
+            if (now < exam.StartDate)
+            {
+                ShowMessage("ยังไม่ถึงเวลาสอบ", false);
+                return;
+            }
+
+            if (now > exam.EndDate)
+            {
+                ShowMessage("หมดเวลาสอบแล้ว", false);
+                await SubmitExam(); // ส่งข้อสอบอัตโนมัติ
+                return;
+            }
+
+            // คำนวณเวลาสิ้นสุดการสอบ
+            var maxEndTime = exam.EndDate;
+            var durationEndTime = examResult.StartTime.AddMinutes(exam.Duration);
+            examEndTime = maxEndTime < durationEndTime ? maxEndTime : durationEndTime;
+
+            if (now >= examEndTime)
+            {
+                ShowMessage("หมดเวลาสอบแล้ว", false);
+                await SubmitExam(); // ส่งข้อสอบอัตโนมัติ
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowMessage($"เกิดข้อผิดพลาดในการโหลดข้อมูล: {ex.Message}", false);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void LoadExistingAnswers()
+    {
+        if (examResult == null) return;
+
+        studentAnswers.Clear();
+        foreach (var answer in examResult.Answers)
+        {
+            studentAnswers[answer.QuestionId] = answer.Answer;
+        }
+    }
+
+    private void InitializeTimer()
+    {
+        timeRemaining = examEndTime - DateTime.Now;
+        
+        examTimer = new Timer(UpdateTimer, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+    }
+
+    private async void UpdateTimer(object? state)
+    {
+        timeRemaining = examEndTime - DateTime.Now;
+        
+        if (timeRemaining.TotalSeconds <= 0)
+        {
+            timeRemaining = TimeSpan.Zero;
+            examTimer?.Dispose();
+            
+            await InvokeAsync(async () =>
+            {
+                await SubmitExam();
+                StateHasChanged();
+            });
+        }
+        else
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task StartAutoSave()
+    {
+        while (!examResult?.IsCompleted == true && timeRemaining.TotalSeconds > 0)
+        {
+            await Task.Delay(30000); // รอ 30 วินาที
+            
+            if (examResult?.IsCompleted != true)
+            {
+                await SaveDraft();
+            }
+        }
+    }
+
+    private RenderFragment RenderQuestion(Question question) => builder =>
+    {
+        builder.OpenElement(0, "div");
+        
+        switch (question.Type)
+        {
+            case QuestionType.MultipleChoice:
+                RenderMultipleChoice(builder, question);
+                break;
+            case QuestionType.TrueFalse:
+                RenderTrueFalse(builder, question);
+                break;
+            case QuestionType.ShortAnswer:
+                RenderShortAnswer(builder, question);
+                break;
+        }
+        
+        builder.CloseElement();
+    };
+
+    private void RenderMultipleChoice(RenderTreeBuilder builder, Question question)
+    {
+        var currentAnswer = studentAnswers.GetValueOrDefault(question.Id, "");
+        
+        for (int i = 0; i < question.Options.Count; i++)
+        {
+            var option = question.Options[i];
+            var optionId = $"q{question.Id}_option{i}";
+            
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "class", "form-check mb-2");
+            
+            builder.OpenElement(2, "input");
+            builder.AddAttribute(3, "class", "form-check-input");
+            builder.AddAttribute(4, "type", "radio");
+            builder.AddAttribute(5, "name", $"question_{question.Id}");
+            builder.AddAttribute(6, "id", optionId);
+            builder.AddAttribute(7, "value", option);
+            builder.AddAttribute(8, "checked", currentAnswer == option);
+            builder.AddAttribute(9, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, 
+                args => OnAnswerChanged(question.Id, args.Value?.ToString() ?? "")));
+            builder.CloseElement();
+            
+            builder.OpenElement(10, "label");
+            builder.AddAttribute(11, "class", "form-check-label");
+            builder.AddAttribute(12, "for", optionId);
+            builder.AddContent(13, option);
+            builder.CloseElement();
+            
+            builder.CloseElement();
+        }
+    }
+
+    private void RenderTrueFalse(RenderTreeBuilder builder, Question question)
+    {
+        var currentAnswer = studentAnswers.GetValueOrDefault(question.Id, "");
+        
+        // True option
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "form-check mb-2");
+        
+        builder.OpenElement(2, "input");
+        builder.AddAttribute(3, "class", "form-check-input");
+        builder.AddAttribute(4, "type", "radio");
+        builder.AddAttribute(5, "name", $"question_{question.Id}");
+        builder.AddAttribute(6, "id", $"q{question.Id}_true");
+        builder.AddAttribute(7, "value", "True");
+        builder.AddAttribute(8, "checked", currentAnswer == "True");
+        builder.AddAttribute(9, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, 
+            args => OnAnswerChanged(question.Id, "True")));
+        builder.CloseElement();
+        
+        builder.OpenElement(10, "label");
+        builder.AddAttribute(11, "class", "form-check-label");
+        builder.AddAttribute(12, "for", $"q{question.Id}_true");
+        builder.AddContent(13, "ถูก (True)");
+        builder.CloseElement();
+        
+        builder.CloseElement();
+        
+        // False option
+        builder.OpenElement(14, "div");
+        builder.AddAttribute(15, "class", "form-check mb-2");
+        
+        builder.OpenElement(16, "input");
+        builder.AddAttribute(17, "class", "form-check-input");
+        builder.AddAttribute(18, "type", "radio");
+        builder.AddAttribute(19, "name", $"question_{question.Id}");
+        builder.AddAttribute(20, "id", $"q{question.Id}_false");
+        builder.AddAttribute(21, "value", "False");
+        builder.AddAttribute(22, "checked", currentAnswer == "False");
+        builder.AddAttribute(23, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, 
+            args => OnAnswerChanged(question.Id, "False")));
+        builder.CloseElement();
+        
+        builder.OpenElement(24, "label");
+        builder.AddAttribute(25, "class", "form-check-label");
+        builder.AddAttribute(26, "for", $"q{question.Id}_false");
+        builder.AddContent(27, "ผิด (False)");
+        builder.CloseElement();
+        
+        builder.CloseElement();
+    }
+
+    private void RenderShortAnswer(RenderTreeBuilder builder, Question question)
+    {
+        var currentAnswer = studentAnswers.GetValueOrDefault(question.Id, "");
+        
+        builder.OpenElement(0, "textarea");
+        builder.AddAttribute(1, "class", "form-control");
+        builder.AddAttribute(2, "rows", "3");
+        builder.AddAttribute(3, "placeholder", "กรอกคำตอบของคุณ...");
+        builder.AddAttribute(4, "value", currentAnswer);
+        builder.AddAttribute(5, "oninput", EventCallback.Factory.Create<ChangeEventArgs>(this,
+            args => OnAnswerChanged(question.Id, args.Value?.ToString() ?? "")));
+        builder.CloseElement();
+    }
+
+    private RenderFragment RenderQuestionNavigation() => builder =>
+    {
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "card");
+        
+        builder.OpenElement(2, "div");
+        builder.AddAttribute(3, "class", "card-header");
+        builder.OpenElement(4, "h6");
+        builder.AddAttribute(5, "class", "mb-0");
+        builder.AddContent(6, "นำทางคำถาม");
+        builder.CloseElement();
+        builder.CloseElement();
+        
+        builder.OpenElement(7, "div");
+        builder.AddAttribute(8, "class", "card-body");
+        
+        if (exam != null)
+        {
+            for (int i = 0; i < exam.Questions.Count; i++)
+            {
+                var questionId = exam.Questions[i].Id;
+                var isAnswered = studentAnswers.ContainsKey(questionId);
+                var isCurrent = i == currentQuestionIndex && !showAllQuestions;
+                
+                builder.OpenElement(9, "button");
+                builder.AddAttribute(10, "class", $"btn btn-sm me-1 mb-1 {GetQuestionButtonClass(isAnswered, isCurrent)}");
+                builder.AddAttribute(11, "onclick", EventCallback.Factory.Create(this, () => GoToQuestion(i)));
+                builder.AddContent(12, (i + 1).ToString());
+                builder.CloseElement();
+            }
+        }
+        
+        builder.CloseElement();
+        builder.CloseElement();
+    };
+
+    private string GetQuestionButtonClass(bool isAnswered, bool isCurrent)
+    {
+        if (isCurrent) return "btn-primary";
+        if (isAnswered) return "btn-success";
+        return "btn-outline-secondary";
+    }
+
+    private string GetQuestionCardClass(int questionId)
+    {
+        if (studentAnswers.ContainsKey(questionId))
+            return "border-success";
+        return "";
+    }
+
+    private void OnAnswerChanged(int questionId, string answer)
+    {
+        if (string.IsNullOrWhiteSpace(answer))
+        {
+            studentAnswers.Remove(questionId);
+        }
+        else
+        {
+            studentAnswers[questionId] = answer;
+        }
+        
+        StateHasChanged();
+    }
+
+    private void GoToQuestion(int index)
+    {
+        if (index >= 0 && index < totalQuestions)
+        {
+            currentQuestionIndex = index;
+            if (showAllQuestions)
+            {
+                showAllQuestions = false;
+            }
+        }
+    }
+
+    private void NextQuestion()
+    {
+        if (currentQuestionIndex < totalQuestions - 1)
+        {
+            currentQuestionIndex++;
+        }
+    }
+
+    private void PreviousQuestion()
+    {
+        if (currentQuestionIndex > 0)
+        {
+            currentQuestionIndex--;
+        }
+    }
+
+    private void ToggleView()
+    {
+        showAllQuestions = !showAllQuestions;
+    }
+
+    private async Task ToggleFullscreen()
+    {
+        await JSRuntime.InvokeVoidAsync("toggleFullscreen");
+    }
+
+    private async Task SaveDraft()
+    {
+        if (examResult == null) return;
+
+        try
+        {
+            examResult.Answers.Clear();
+            
+            foreach (var answer in studentAnswers)
+            {
+                examResult.Answers.Add(new StudentAnswer
+                {
+                    QuestionId = answer.Key,
+                    Answer = answer.Value,
+                    IsCorrect = false, // จะคำนวณเมื่อส่งข้อสอบ
+                    Points = 0 // จะคำนวณเมื่อส่งข้อสอบ
+                });
+            }
+
+            DataService.UpdateExamResult(examResult);
+            ShowMessage("บันทึกคำตอบเรียบร้อยแล้ว", true);
+        }
+        catch (Exception ex)
+        {
+            ShowMessage($"เกิดข้อผิดพลาดในการบันทึก: {ex.Message}", false);
+        }
+    }
+
+    private async Task ShowSubmitConfirmation()
+    {
+        await ModalService.ShowAsync("submitModal");
+    }
+
+    private async Task HideSubmitConfirmation()
+    {
+        await ModalService.HideAsync("submitModal");
+    }
+
+    private async Task SubmitExam()
+    {
+        if (examResult == null || exam == null || submitting) return;
+
+        submitting = true;
+        
+        try
+        {
+            // บันทึกคำตอบและคำนวณคะแนน
+            examResult.Answers.Clear();
+            int totalScore = 0;
+
+            foreach (var question in exam.Questions)
+            {
+                var studentAnswer = studentAnswers.GetValueOrDefault(question.Id, "");
+                var isCorrect = string.Equals(studentAnswer.Trim(), question.CorrectAnswer.Trim(), StringComparison.OrdinalIgnoreCase);
+                var points = isCorrect ? question.Points : 0;
+
+                examResult.Answers.Add(new StudentAnswer
+                {
+                    QuestionId = question.Id,
+                    Answer = studentAnswer,
+                    IsCorrect = isCorrect,
+                    Points = points
+                });
+
+                totalScore += points;
+            }
+
+            examResult.Score = totalScore;
+            examResult.TotalPoints = exam.TotalPoints;
+            examResult.EndTime = DateTime.Now;
+            examResult.IsCompleted = true;
+
+            DataService.UpdateExamResult(examResult);
+
+            // หยุด Timer
+            examTimer?.Dispose();
+
+            // ปิดการป้องกันการออกจากหน้า
+            await JSRuntime.InvokeVoidAsync("preventPageLeave", false);
+
+            ShowMessage("ส่งข้อสอบเรียบร้อยแล้ว", true);
+            
+            await Task.Delay(2000);
+            Navigation.NavigateTo($"/exam-results?result={examResult.Id}");
+        }
+        catch (Exception ex)
+        {
+            ShowMessage($"เกิดข้อผิดพลาดในการส่งข้อสอบ: {ex.Message}", false);
+        }
+        finally
+        {
+            submitting = false;
+            await HideSubmitConfirmation();
+        }
+    }
+
+    private string FormatTime(TimeSpan time)
+    {
+        if (time.TotalSeconds <= 0) return "00:00:00";
+        
+        return $"{(int)time.TotalHours:D2}:{time.Minutes:D2}:{time.Seconds:D2}";
+    }
+
+    private string FormatTimeSpan(TimeSpan timeSpan)
+    {
+        if (timeSpan.TotalDays >= 1)
+            return $"{(int)timeSpan.TotalDays} วัน {timeSpan.Hours} ชั่วโมง {timeSpan.Minutes} นาที";
+        else if (timeSpan.TotalHours >= 1)
+            return $"{(int)timeSpan.TotalHours} ชั่วโมง {timeSpan.Minutes} นาที";
+        else
+            return $"{timeSpan.Minutes} นาที {timeSpan.Seconds} วินาที";
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/subjects");
+    }
+
+    private void ViewResults()
+    {
+        Navigation.NavigateTo($"/exam-results?result={examResult?.Id}");
+    }
+
+    private void ShowMessage(string msg, bool success)
+    {
+        message = msg;
+        isSuccess = success;
+        StateHasChanged();
+    }
+
+    private void ClearMessage()
+    {
+        message = "";
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        examTimer?.Dispose();
+    }
+}
+
+<script>
+    window.initializeExamPage = () => {
+        // ปิดการใช้ right-click
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+
+        // ปิดการใช้ keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // ปิด F12, Ctrl+Shift+I, Ctrl+U
+            if (e.keyCode == 123 || 
+                (e.ctrlKey && e.shiftKey && e.keyCode == 73) || 
+                (e.ctrlKey && e.keyCode == 85)) {
+                e.preventDefault();
+            }
+        });
+    };
+
+    window.preventPageLeave = (prevent) => {
+        if (prevent) {
+            window.addEventListener('beforeunload', preventLeave);
+        } else {
+            window.removeEventListener('beforeunload', preventLeave);
+        }
+    };
+
+    function preventLeave(e) {
+        e.preventDefault();
+        e.returnValue = 'คุณแน่ใจหรือไม่ที่จะออกจากหน้าสอบ? คำตอบที่ยังไม่ได้บันทึกจะหายไป';
+        return 'คุณแน่ใจหรือไม่ที่จะออกจากหน้าสอบ? คำตอบที่ยังไม่ได้บันทึกจะหายไป';
+    }
+
+    window.toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+    };
+</script>

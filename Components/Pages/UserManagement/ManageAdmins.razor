@@ -1,0 +1,760 @@
+@page "/manage-admins"
+@using PISA_APP.Models
+@using PISA_APP.Services
+@using PISA_APP.Components.Shared
+@using System.ComponentModel.DataAnnotations
+@inject MockDataService MockDataService
+@inject AuthenticationService AuthService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>จัดการผู้ใช้งานทั้งหมด</PageTitle>
+
+@if (!AuthService.IsAdmin())
+{
+    <div class="alert alert-danger">
+        <i class="fas fa-exclamation-triangle"></i>
+        คุณไม่มีสิทธิ์เข้าถึงหน้านี้ เฉพาะผู้ดูแลระบบเท่านั้น
+    </div>
+    return;
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-users text-primary"></i> จัดการผู้ใช้งานทั้งหมด</h2>
+                <div class="btn-group">
+                    <button class="btn btn-primary" @onclick="ShowAddUserModal">
+                        <i class="fas fa-plus"></i> เพิ่มผู้ใช้ใหม่
+                    </button>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(alertMessage))
+            {
+                <div class="alert @alertClass alert-dismissible fade show" role="alert">
+                    <i class="fas @alertIcon"></i>
+                    @alertMessage
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+
+            <!-- Statistics Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>@allUsers.Count</h4>
+                                    <p class="mb-0">ผู้ใช้ทั้งหมด</p>
+                                </div>
+                                <i class="fas fa-users fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-danger text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>@allUsers.Count(u => u.Role == UserRole.Admin)</h4>
+                                    <p class="mb-0">ผู้ดูแลระบบ</p>
+                                </div>
+                                <i class="fas fa-user-shield fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>@allUsers.Count(u => u.Role == UserRole.Teacher)</h4>
+                                    <p class="mb-0">ครู/อาจารย์</p>
+                                </div>
+                                <i class="fas fa-chalkboard-teacher fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>@allUsers.Count(u => u.Role == UserRole.Student)</h4>
+                                    <p class="mb-0">นักศึกษา</p>
+                                </div>
+                                <i class="fas fa-user-graduate fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users Table -->
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-table"></i> รายการผู้ใช้งาน</h5>
+                </div>
+                <div class="card-body">
+                    <PaginatedTable TItem="User" 
+                                    Items="allUsers"
+                                    SearchPlaceholder="ค้นหาผู้ใช้ (ชื่อ, อีเมล, บทบาท)..."
+                                    SearchFilter="UserSearchFilter"
+                                    FilterOptions="userFilterOptions"
+                                    ItemFilter="UserItemFilter"
+                                    OnPaginationChanged="OnPaginationChanged">
+                        <TableHeader>
+                            <thead class="table-dark">
+                                <tr>
+                                    <th><i class="fas fa-user"></i> ชื่อผู้ใช้</th>
+                                    <th><i class="fas fa-id-card"></i> ชื่อ-นามสกุล</th>
+                                    <th><i class="fas fa-envelope"></i> อีเมล</th>
+                                    <th><i class="fas fa-user-tag"></i> บทบาท</th>
+                                    <th><i class="fas fa-phone"></i> เบอร์โทร</th>
+                                    <th><i class="fas fa-toggle-on"></i> สถานะ</th>
+                                    <th><i class="fas fa-calendar"></i> วันที่สร้าง</th>
+                                    <th><i class="fas fa-cogs"></i> การจัดการ</th>
+                                </tr>
+                            </thead>
+                        </TableHeader>
+                        <TableRow Context="user">
+                            <tr class="@(!user.IsActive ? "table-secondary" : "")">
+                                <td>
+                                    <strong>@user.Username</strong>
+                                </td>
+                                <td>@user.FullName</td>
+                                <td>
+                                    <a href="mailto:@user.Email" class="text-decoration-none">
+                                        @user.Email
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="badge bg-@GetRoleBadgeColor(user.Role)">
+                                        <i class="fas @GetRoleIcon(user.Role)"></i>
+                                        @GetRoleDisplayName(user.Role)
+                                    </span>
+                                </td>
+                                <td>@user.PhoneNumber</td>
+                                <td>
+                                    <span class="badge bg-@(user.IsActive ? "success" : "danger")">
+                                        @(user.IsActive ? "ใช้งานได้" : "ปิดใช้งาน")
+                                    </span>
+                                </td>
+                                <td>@user.CreatedDate.ToString("dd/MM/yyyy")</td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <button class="btn btn-outline-primary btn-sm"
+                                                @onclick="() => ViewUserDetails(user)"
+                                                title="ดูรายละเอียด">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn btn-outline-warning btn-sm"
+                                                @onclick="() => ShowEditUserModal(user)"
+                                                title="แก้ไข">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-outline-@(user.IsActive ? "secondary" : "success") btn-sm"
+                                                @onclick="() => ToggleUserStatus(user)"
+                                                title="@(user.IsActive ? "ปิดใช้งาน" : "เปิดใช้งาน")">
+                                            <i class="fas fa-@(user.IsActive ? "ban" : "check")"></i>
+                                        </button>
+                                        @if (AuthService.CurrentUser?.Id != user.Id)
+                                        {
+                                            <button class="btn btn-outline-danger btn-sm"
+                                                    @onclick="() => ShowDeleteConfirmation(user)"
+                                                    title="ลบ">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        </TableRow>
+                    </PaginatedTable>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit User Modal -->
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas @(isEditMode ? "fa-edit" : "fa-plus")"></i>
+                    @(isEditMode ? "แก้ไขข้อมูลผู้ใช้" : "เพิ่มผู้ใช้ใหม่")
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <EditForm Model="userModel" OnValidSubmit="SaveUser">
+                <DataAnnotationsValidator />
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">ชื่อผู้ใช้ <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="userModel.Username" />
+                                <ValidationMessage For="@(() => userModel.Username)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">รหัสผ่าน <span class="text-danger">*</span></label>
+                                <InputText type="password" class="form-control" @bind-Value="userModel.Password" />
+                                <ValidationMessage For="@(() => userModel.Password)" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label class="form-label">ชื่อ-นามสกุล <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="userModel.FullName" />
+                                <ValidationMessage For="@(() => userModel.FullName)" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">อีเมล <span class="text-danger">*</span></label>
+                                <InputText type="email" class="form-control" @bind-Value="userModel.Email" />
+                                <ValidationMessage For="@(() => userModel.Email)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">เบอร์โทรศัพท์</label>
+                                <InputText class="form-control" @bind-Value="userModel.PhoneNumber" />
+                                <ValidationMessage For="@(() => userModel.PhoneNumber)" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">บทบาท <span class="text-danger">*</span></label>
+                                <InputSelect class="form-select" @bind-Value="userModel.Role">
+                                    <option value="@UserRole.Admin">ผู้ดูแลระบบ</option>
+                                    <option value="@UserRole.Teacher">ครู/อาจารย์</option>
+                                    <option value="@UserRole.Student">นักศึกษา</option>
+                                </InputSelect>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            @if (userModel.Role == UserRole.Student)
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label">รหัสนักศึกษา</label>
+                                    <InputText class="form-control" @bind-Value="userModel.StudentId" />
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <InputCheckbox class="form-check-input" @bind-Value="userModel.IsActive" />
+                                <label class="form-check-label">เปิดใช้งาน</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> ยกเลิก
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> บันทึก
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+<!-- User Details Modal -->
+<div class="modal fade" id="userDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-info-circle"></i>
+                    รายละเอียดผู้ใช้: @selectedUser?.FullName
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                @if (selectedUser != null)
+                {
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-user"></i> ข้อมูลส่วนตัว</h6>
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>ชื่อผู้ใช้:</strong></td>
+                                    <td>@selectedUser.Username</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>ชื่อ-นามสกุล:</strong></td>
+                                    <td>@selectedUser.FullName</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>อีเมล:</strong></td>
+                                    <td>
+                                        <a href="mailto:@selectedUser.Email">@selectedUser.Email</a>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>เบอร์โทร:</strong></td>
+                                    <td>@selectedUser.PhoneNumber</td>
+                                </tr>
+                                @if (selectedUser is Student student)
+                                {
+                                    <tr>
+                                        <td><strong>รหัสนักศึกษา:</strong></td>
+                                        <td><span class="badge bg-primary">@student.StudentId</span></td>
+                                    </tr>
+                                }
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-info"></i> ข้อมูลระบบ</h6>
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>บทบาท:</strong></td>
+                                    <td>
+                                        <span class="badge bg-@GetRoleBadgeColor(selectedUser.Role)">
+                                            <i class="fas @GetRoleIcon(selectedUser.Role)"></i>
+                                            @GetRoleDisplayName(selectedUser.Role)
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>สถานะ:</strong></td>
+                                    <td>
+                                        <span class="badge bg-@(selectedUser.IsActive ? "success" : "danger")">
+                                            @(selectedUser.IsActive ? "ใช้งานได้" : "ปิดใช้งาน")
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>วันที่สร้าง:</strong></td>
+                                    <td>@selectedUser.CreatedDate.ToString("dd/MM/yyyy HH:mm")</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>ID:</strong></td>
+                                    <td>@selectedUser.Id</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> ปิด
+                </button>
+                <button type="button" class="btn btn-warning" @onclick="() => ShowEditUserModal(selectedUser!)">
+                    <i class="fas fa-edit"></i> แก้ไข
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle text-danger"></i>
+                    ยืนยันการลบ
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>คุณแน่ใจหรือไม่ที่จะลบผู้ใช้ <strong>@userToDelete?.FullName</strong>?</p>
+                <p class="text-muted">การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> ยกเลิก
+                </button>
+                <button type="button" class="btn btn-danger" @onclick="DeleteUser">
+                    <i class="fas fa-trash"></i> ลบ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // User form model
+    public class UserFormModel
+    {
+        public int Id { get; set; }
+
+        [Required(ErrorMessage = "กรุณากรอกชื่อผู้ใช้")]
+        [StringLength(50, ErrorMessage = "ชื่อผู้ใช้ต้องไม่เกิน 50 ตัวอักษร")]
+        public string Username { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "กรุณากรอกรหัสผ่าน")]
+        [StringLength(100, MinimumLength = 6, ErrorMessage = "รหัสผ่านต้องมีความยาว 6-100 ตัวอักษร")]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "กรุณากรอกชื่อ-นามสกุล")]
+        [StringLength(200, ErrorMessage = "ชื่อ-นามสกุลต้องไม่เกิน 200 ตัวอักษร")]
+        public string FullName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "กรุณากรอกอีเมล")]
+        [EmailAddress(ErrorMessage = "รูปแบบอีเมลไม่ถูกต้อง")]
+        public string Email { get; set; } = string.Empty;
+
+        [Phone(ErrorMessage = "รูปแบบเบอร์โทรไม่ถูกต้อง")]
+        public string PhoneNumber { get; set; } = string.Empty;
+
+        public UserRole Role { get; set; } = UserRole.Student;
+        public bool IsActive { get; set; } = true;
+        public string StudentId { get; set; } = string.Empty;
+    }
+
+    private List<User> allUsers = new();
+    private User? selectedUser;
+    private User? userToDelete;
+
+    // Form data
+    private UserFormModel userModel = new();
+    private bool isEditMode = false;
+
+    // Filter options for PaginatedTable
+    private List<PaginatedTable<User>.FilterOption> userFilterOptions = new();
+
+    // Alert messages
+    private string alertMessage = string.Empty;
+    private string alertClass = string.Empty;
+    private string alertIcon = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        LoadData();
+        SetupFilterOptions();
+    }
+
+    private void LoadData()
+    {
+        allUsers = MockDataService.GetAllUsers();
+    }
+
+    private void SetupFilterOptions()
+    {
+        userFilterOptions = new List<PaginatedTable<User>.FilterOption>
+        {
+            new() { Value = "admin", Text = "ผู้ดูแลระบบ" },
+            new() { Value = "teacher", Text = "ครู/อาจารย์" },
+            new() { Value = "student", Text = "นักศึกษา" },
+            new() { Value = "active", Text = "ใช้งานได้" },
+            new() { Value = "inactive", Text = "ปิดใช้งาน" }
+        };
+    }
+
+    private bool UserSearchFilter(User user, string searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return true;
+
+        var term = searchTerm.ToLower();
+        return user.Username.ToLower().Contains(term) ||
+               user.FullName.ToLower().Contains(term) ||
+               user.Email.ToLower().Contains(term) ||
+               user.Role.ToString().ToLower().Contains(term) ||
+               GetRoleDisplayName(user.Role).ToLower().Contains(term) ||
+               user.PhoneNumber.Contains(term);
+    }
+
+    private bool UserItemFilter(User user, string filterValue)
+    {
+        return filterValue switch
+        {
+            "admin" => user.Role == UserRole.Admin,
+            "teacher" => user.Role == UserRole.Teacher,
+            "student" => user.Role == UserRole.Student,
+            "active" => user.IsActive,
+            "inactive" => !user.IsActive,
+            _ => true
+        };
+    }
+
+    private async Task OnPaginationChanged(PaginationModel pagination)
+    {
+        // Handle pagination change if needed
+        await Task.CompletedTask;
+    }
+
+    private async Task ShowAddUserModal()
+    {
+        userModel = new UserFormModel();
+        isEditMode = false;
+        var modal = await JSRuntime.InvokeAsync<IJSObjectReference>("bootstrap.Modal.getOrCreateInstance", "#userModal");
+        await modal.InvokeVoidAsync("show");
+    }
+
+    private async Task ShowEditUserModal(User user)
+    {
+        userModel = new UserFormModel
+        {
+            Id = user.Id,
+            Username = user.Username,
+            Password = user.Password,
+            FullName = user.FullName,
+            Email = user.Email,
+            PhoneNumber = user.PhoneNumber,
+            Role = user.Role,
+            IsActive = user.IsActive,
+            StudentId = user is Student student ? student.StudentId : ""
+        };
+        isEditMode = true;
+        var detailsModal = await JSRuntime.InvokeAsync<IJSObjectReference>("bootstrap.Modal.getOrCreateInstance", "#userDetailsModal");
+        await detailsModal.InvokeVoidAsync("hide");
+        var modal = await JSRuntime.InvokeAsync<IJSObjectReference>("bootstrap.Modal.getOrCreateInstance", "#userModal");
+        await modal.InvokeVoidAsync("show");
+    }
+
+    private async Task ViewUserDetails(User user)
+    {
+        selectedUser = user;
+        var modal = await JSRuntime.InvokeAsync<IJSObjectReference>("bootstrap.Modal.getOrCreateInstance", "#userDetailsModal");
+        await modal.InvokeVoidAsync("show");
+    }
+
+    private async Task ShowDeleteConfirmation(User user)
+    {
+        userToDelete = user;
+        var modal = await JSRuntime.InvokeAsync<IJSObjectReference>("bootstrap.Modal.getOrCreateInstance", "#deleteConfirmModal");
+        await modal.InvokeVoidAsync("show");
+    }
+
+    private async Task SaveUser()
+    {
+        try
+        {
+            // Check for duplicate username (excluding current user if editing)
+            var existingUser = MockDataService.GetAllUsers()
+                .FirstOrDefault(u => u.Username == userModel.Username && u.Id != userModel.Id);
+            
+            if (existingUser != null)
+            {
+                ShowAlert("ชื่อผู้ใช้นี้มีอยู่ในระบบแล้ว", "error");
+                return;
+            }
+
+            // Check for duplicate email (excluding current user if editing)
+            existingUser = MockDataService.GetAllUsers()
+                .FirstOrDefault(u => u.Email == userModel.Email && u.Id != userModel.Id);
+            
+            if (existingUser != null)
+            {
+                ShowAlert("อีเมลนี้มีอยู่ในระบบแล้ว", "error");
+                return;
+            }
+
+            if (isEditMode)
+            {
+                var existingUserObj = allUsers.FirstOrDefault(u => u.Id == userModel.Id);
+                if (existingUserObj != null)
+                {
+                    existingUserObj.Username = userModel.Username;
+                    existingUserObj.Password = userModel.Password;
+                    existingUserObj.FullName = userModel.FullName;
+                    existingUserObj.Email = userModel.Email;
+                    existingUserObj.PhoneNumber = userModel.PhoneNumber;
+                    existingUserObj.IsActive = userModel.IsActive;
+                    
+                    // Handle role change
+                    if (existingUserObj.Role != userModel.Role)
+                    {
+                        // Create new user object with correct type
+                        var newUser = CreateUserByRole(userModel);
+                        newUser.Id = existingUserObj.Id;
+                        newUser.CreatedDate = existingUserObj.CreatedDate;
+                        MockDataService.UpdateUser(newUser);
+                    }
+                    else
+                    {
+                        // Update Student ID if it's a student
+                        if (existingUserObj is Student studentUser && !string.IsNullOrEmpty(userModel.StudentId))
+                        {
+                            studentUser.StudentId = userModel.StudentId;
+                        }
+                        MockDataService.UpdateUser(existingUserObj);
+                    }
+                    
+                    ShowAlert("แก้ไขข้อมูลผู้ใช้เรียบร้อยแล้ว", "success");
+                }
+            }
+            else
+            {
+                var newUser = CreateUserByRole(userModel);
+                newUser.CreatedDate = DateTime.Now;
+                MockDataService.AddUser(newUser);
+                ShowAlert("เพิ่มผู้ใช้ใหม่เรียบร้อยแล้ว", "success");
+            }
+
+            var modal = await JSRuntime.InvokeAsync<IJSObjectReference>("bootstrap.Modal.getOrCreateInstance", "#userModal");
+            await modal.InvokeVoidAsync("hide");
+            LoadData();
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"เกิดข้อผิดพลาด: {ex.Message}", "error");
+        }
+    }
+
+    private User CreateUserByRole(UserFormModel model)
+    {
+        return model.Role switch
+        {
+            UserRole.Admin => new Admin
+            {
+                Username = model.Username,
+                Password = model.Password,
+                FullName = model.FullName,
+                Email = model.Email,
+                PhoneNumber = model.PhoneNumber,
+                IsActive = model.IsActive
+            },
+            UserRole.Teacher => new Teacher
+            {
+                Username = model.Username,
+                Password = model.Password,
+                FullName = model.FullName,
+                Email = model.Email,
+                PhoneNumber = model.PhoneNumber,
+                IsActive = model.IsActive,
+                AssignedSubjectIds = new List<int>()
+            },
+            UserRole.Student => new Student
+            {
+                Username = model.Username,
+                Password = model.Password,
+                FullName = model.FullName,
+                Email = model.Email,
+                PhoneNumber = model.PhoneNumber,
+                IsActive = model.IsActive,
+                StudentId = model.StudentId,
+                EnrolledSubjectIds = new List<int>()
+            },
+            _ => throw new ArgumentException("Invalid role")
+        };
+    }
+
+    private async Task ToggleUserStatus(User user)
+    {
+        try
+        {
+            if (AuthService.CurrentUser?.Id == user.Id)
+            {
+                ShowAlert("ไม่สามารถเปลี่ยนสถานะของตนเองได้", "warning");
+                return;
+            }
+
+            user.IsActive = !user.IsActive;
+            MockDataService.UpdateUser(user);
+            
+            var status = user.IsActive ? "เปิดใช้งาน" : "ปิดใช้งาน";
+            ShowAlert($"{status}ผู้ใช้ {user.FullName} เรียบร้อยแล้ว", "success");
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"เกิดข้อผิดพลาด: {ex.Message}", "error");
+        }
+    }
+
+    private async Task DeleteUser()
+    {
+        try
+        {
+            if (userToDelete == null) return;
+
+            if (AuthService.CurrentUser?.Id == userToDelete.Id)
+            {
+                ShowAlert("ไม่สามารถลบบัญชีของตนเองได้", "warning");
+                return;
+            }
+
+            MockDataService.DeleteUser(userToDelete.Id);
+            ShowAlert($"ลบผู้ใช้ {userToDelete.FullName} เรียบร้อยแล้ว", "success");
+
+            var modal = await JSRuntime.InvokeAsync<IJSObjectReference>("bootstrap.Modal.getOrCreateInstance", "#deleteConfirmModal");
+            await modal.InvokeVoidAsync("hide");
+            
+            LoadData();
+            userToDelete = null;
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"เกิดข้อผิดพลาด: {ex.Message}", "error");
+        }
+    }
+
+    private string GetRoleBadgeColor(UserRole role)
+    {
+        return role switch
+        {
+            UserRole.Admin => "danger",
+            UserRole.Teacher => "warning",
+            UserRole.Student => "primary",
+            _ => "secondary"
+        };
+    }
+
+    private string GetRoleIcon(UserRole role)
+    {
+        return role switch
+        {
+            UserRole.Admin => "fa-user-shield",
+            UserRole.Teacher => "fa-chalkboard-teacher",
+            UserRole.Student => "fa-user-graduate",
+            _ => "fa-user"
+        };
+    }
+
+    private string GetRoleDisplayName(UserRole role)
+    {
+        return role switch
+        {
+            UserRole.Admin => "ผู้ดูแลระบบ",
+            UserRole.Teacher => "ครู/อาจารย์",
+            UserRole.Student => "นักศึกษา",
+            _ => "ไม่ระบุ"
+        };
+    }
+
+    private void ShowAlert(string message, string type)
+    {
+        alertMessage = message;
+        alertClass = type switch
+        {
+            "success" => "alert-success",
+            "error" => "alert-danger",
+            "warning" => "alert-warning",
+            _ => "alert-info"
+        };
+        alertIcon = type switch
+        {
+            "success" => "fa-check-circle",
+            "error" => "fa-exclamation-triangle",
+            "warning" => "fa-exclamation-triangle",
+            _ => "fa-info-circle"
+        };
+        StateHasChanged();
+    }
+}
