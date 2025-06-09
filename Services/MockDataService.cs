@@ -126,14 +126,17 @@ namespace PISA_APP.Services
                 var examType = examTypes[(i - 1) % examTypes.Length];
                 var subject = _subjects.Find(s => s.Id == subjectId);
                 
+                // 30% ของข้อสอบไม่จำกัดเวลาเข้าสอบ (สามารถสอบได้ตลอดเวลา)
+                var isUnlimitedAccess = i % 10 < 3; // 30% จะเป็น unlimited access
+                
                 var exam = new Exam
                 {
                     Id = i,
                     Title = $"{examType} {subject?.Name ?? "วิชาทั่วไป"} ครั้งที่ {((i - 1) / 50) + 1}",
-                    Description = $"การ{examType} วิชา {subject?.Name ?? "วิชาทั่วไป"}",
+                    Description = $"การ{examType} วิชา {subject?.Name ?? "วิชาทั่วไป"}" + (isUnlimitedAccess ? " (สามารถเข้าสอบได้ตลอดเวลา)" : ""),
                     SubjectId = subjectId,
-                    StartDate = DateTime.Now.AddDays(random.Next(-60, 30)),
-                    EndDate = DateTime.Now.AddDays(random.Next(31, 90)),
+                    StartDate = isUnlimitedAccess ? DateTime.Now.AddDays(-365) : DateTime.Now.AddDays(random.Next(-60, 30)),
+                    EndDate = isUnlimitedAccess ? DateTime.Now.AddDays(365) : DateTime.Now.AddDays(random.Next(31, 90)),
                     Duration = examType == "ควิซ" ? 30 : examType == "สอบย่อย" ? 60 : 120,
                     TotalPoints = examType == "ควิซ" ? 50 : 100,
                     IsActive = i % 15 != 0, // 93% active exams
